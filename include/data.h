@@ -2,64 +2,64 @@
 #define DATA_STRUCTURES_H
 
 /*
- * Representa um Owner (equivalente a "Dono" do enunciado).
- * Campos do enunciado: numContribuinte, nome, codPostal 
- * Passamos a usar: taxId, name, postalCode
+ * Representa um Dono (conforme o enunciado: numContribuinte, nome, codPostal).
+ * Aqui usamos:
+ *  - numeroContribuinte (int)
+ *  - nome (string)
+ *  - codigoPostal (string)
  */
 typedef struct {
-    int  taxId;              // em vez de numContribuinte
-    char name[50];           // em vez de nome
-    char postalCode[10];     // em vez de codPostal
-} Owner;
+    int  numeroContribuinte;
+    char nome[50];
+    char codigoPostal[10];
+} Dono;
 
 /*
- * Cada nó de lista para armazenar Owners (Donos).
- * Substituímos 'nodo' por 'node' e 'prox' por 'next'.
+ * Cada node de lista ligada para armazenar Donos.
  */
-typedef struct nodeOwner {
-    Owner               owner;
-    struct nodeOwner*   next;
-} NodeOwner;
+typedef struct nodeDono {
+    Dono               dono;
+    struct nodeDono*   next;
+} NodeDono;
 
 /*
- * Representa um Car (equivalente a "Carro" do enunciado).
- * Matrícula => licensePlate
- * marca => brand
- * modelo => model
- * ano => year
- * dono => taxIdOwner (poderia ser ownerId, mas definimos taxIdOwner)
- * codVeiculo => vehicleId
- */
-typedef struct {
-    char licensePlate[15];
-    char brand[30];
-    char model[30];
-    int  year;
-    int  taxIdOwner;   // referência ao Owner (taxId), 
-    int  vehicleId;
-} Car;
-
-/*
- * Lista ligada de Cars
- */
-typedef struct nodeCar {
-    Car              car;
-    struct nodeCar*  next;
-} NodeCar;
-
-/*
- * Representa um Sensor (codSensor => sensorId,
- * designacao => designation, latitude, longitude)
+ * Representa um Carro (equivalente à entidade "Carro" do enunciado).
+ *  - matrícula => matricula
+ *  - marca => marca
+ *  - modelo => modelo
+ *  - ano => ano
+ *  - numContribuinte do Dono => donoContribuinte
+ *  - codVeiculo => idVeiculo
  */
 typedef struct {
-    int  sensorId;
-    char designation[50];
+    char matricula[15];
+    char marca[30];
+    char modelo[30];
+    int  ano;
+    int  donoContribuinte; // faz a ligação a Dono.numeroContribuinte
+    int  idVeiculo;
+} Carro;
+
+/*
+ * Lista ligada de Carros.
+ */
+typedef struct nodeCarro {
+    Carro             carro;
+    struct nodeCarro* next;
+} NodeCarro;
+
+/*
+ * Representa um Sensor (equivalente a "codSensor", "designacao", "latitude", "longitude").
+ */
+typedef struct {
+    int  idSensor;
+    char designacao[50];
     char latitude[20];
     char longitude[20];
 } Sensor;
 
 /*
- * Lista ligada de Sensors
+ * Lista ligada de Sensores.
  */
 typedef struct nodeSensor {
     Sensor            sensor;
@@ -67,45 +67,45 @@ typedef struct nodeSensor {
 } NodeSensor;
 
 /*
- * Representa a Distance entre dois sensores:
- * codSensor1 => sensorId1
- * codSensor2 => sensorId2
- * distancia => distance
+ * Representa uma Distancia entre dois Sensores:
+ *  - idSensor1
+ *  - idSensor2
+ *  - distancia (float)
  */
 typedef struct {
-    int   sensorId1;
-    int   sensorId2;
-    float distance;
-} Distance;
+    int   idSensor1;
+    int   idSensor2;
+    float distancia;
+} Distancia;
 
 /*
- * Lista ligada de Distance
+ * Lista ligada de Distancias.
  */
-typedef struct nodeDistance {
-    Distance             distance;
-    struct nodeDistance* next;
-} NodeDistance;
+typedef struct nodeDistancia {
+    Distancia             distancia;
+    struct nodeDistancia* next;
+} NodeDistancia;
 
 /*
- * Representa uma Passage (equivalente a "Passagem"):
- * idSensor => sensorId
- * codVeiculo => vehicleId
- * dataHora => dateTime
- * tipoRegisto => recordType (0=entrada, 1=saída)
+ * Representa uma Passagem (equivalente a "Passagem" do enunciado):
+ *  - idSensor
+ *  - idVeiculo
+ *  - dataHora (string)
+ *  - tipoRegisto (0=entrada, 1=saída)
  */
 typedef struct {
-    int  sensorId;
-    int  vehicleId;
-    char dateTime[30];  // "12-09-2010_21:35:45.135"
-    int  recordType;    // 0=entrada, 1=saída
-} Passage;
+    int  idSensor;
+    int  idVeiculo;
+    char dataHora[30];  // ex.: "12-09-2010_21:35:45.135"
+    int  tipoRegisto;   // 0=entrada, 1=saída
+} Passagem;
 
 /*
- * Lista ligada de Passages
+ * Lista ligada de Passagens.
  */
-typedef struct nodePassage {
-    Passage            passage;
-    struct nodePassage* next;
-} NodePassage;
+typedef struct nodePassagem {
+    Passagem            passagem;
+    struct nodePassagem* next;
+} NodePassagem;
 
 #endif /* DATA_STRUCTURES_H */
