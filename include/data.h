@@ -1,5 +1,14 @@
 #ifndef DATA_STRUCTURES_H
 #define DATA_STRUCTURES_H
+#define DONO_MAX_NOME 200
+#define DONO_MAX_CODIGOPOSTAL 10
+#define CARRO_MAX_MATRICULA 15
+#define CARRO_MAX_MARCA 30
+#define CARRO_MAX_MODELO 30
+#define SENSOR_MAX_DESIGNACAO 50
+#define SENSOR_MAX_LATITUDE 20
+#define SENSOR_MAX_LONGITUDE 20
+#define PASSAGEM_MAX_DATAHORA 30
 
 /*
  * Representa um Dono (conforme o enunciado: numContribuinte, nome, codPostal).
@@ -10,8 +19,8 @@
  */
 typedef struct {
     int  numeroContribuinte;
-    char nome[50];
-    char codigoPostal[10];
+    char nome[DONO_MAX_NOME];
+    char codigoPostal[DONO_MAX_CODIGOPOSTAL];
 } Dono;
 
 /*
@@ -32,9 +41,9 @@ typedef struct nodeDono {
  *  - codVeiculo => idVeiculo
  */
 typedef struct {
-    char matricula[15];
-    char marca[30];
-    char modelo[30];
+    char matricula[CARRO_MAX_MATRICULA];
+    char marca[CARRO_MAX_MARCA];
+    char modelo[CARRO_MAX_MODELO];
     int  ano;
     int  donoContribuinte; // faz a ligação a Dono.numeroContribuinte
     int  idVeiculo;
@@ -53,9 +62,9 @@ typedef struct nodeCarro {
  */
 typedef struct {
     int  idSensor;
-    char designacao[50];
-    char latitude[20];
-    char longitude[20];
+    char designacao[SENSOR_MAX_DESIGNACAO];
+    char latitude[SENSOR_MAX_LATITUDE];
+    char longitude[SENSOR_MAX_LONGITUDE];
 } Sensor;
 
 /*
@@ -96,7 +105,7 @@ typedef struct nodeDistancia {
 typedef struct {
     int  idSensor;
     int  idVeiculo;
-    char dataHora[30];  // ex.: "12-09-2010_21:35:45.135"
+    char dataHora[PASSAGEM_MAX_DATAHORA];  // ex.: "12-09-2010_21:35:45.135"
     int  tipoRegisto;   // 0=entrada, 1=saída
 } Passagem;
 
