@@ -3,10 +3,6 @@
 
 #include "data.h"
 
-static void libertarListaDonosParcial(NodeDono** lista);
-static void libertarListaCarrosParcial(NodeCarro** lista);
-static void libertarListaSensoresParcial(NodeSensor** lista);
-
 void lerDonos(const char* nomeFicheiro, NodeDono** listaDonos);
 void lerCarros(const char* nomeFicheiro, NodeCarro** listaCarros);
 void lerSensores(const char* nomeFicheiro, NodeSensor** listaSensores);

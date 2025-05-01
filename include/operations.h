@@ -3,19 +3,18 @@
 
 #include "data.h"
 
-// imprime lista de Donos
+// imprime listas (já existentes)
 void imprimirListaDonos(NodeDono* lista);
-
-// imprime lista de Carros
 void imprimirListaCarros(NodeCarro* lista);
-
-// imprime lista de Sensores
 void imprimirListaSensores(NodeSensor* lista);
-
-// imprime lista de Distancias
 void imprimirListaDistancias(NodeDistancia* lista);
-
-// imprime lista de Passagens
 void imprimirListaPassagens(NodePassagem* lista);
+
+// liberta listas
+void libertarListaDonos(NodeDono** lista);
+void libertarListaCarros(NodeCarro** lista);
+void libertarListaSensores(NodeSensor** lista);
+void libertarListaDistancias(NodeDistancia** lista);
+void libertarListaPassagens(NodePassagem** lista);
 
 #endif // OPERATIONS_H

@@ -1,6 +1,7 @@
 // operations.c
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "operations.h"
 
 // --- Donos ---
@@ -92,3 +93,88 @@ void imprimirListaPassagens(NodePassagem* lista) {
                p->passagem.tipoRegisto == 0 ? "entrada" : "saída");
     }
 }
+
+// --- libertar Donos ---
+void libertarListaDonos(NodeDono** lista) {
+    NodeDono *atual = *lista, *seguinte;
+    int cont = 0;
+    while (atual) {
+        seguinte = atual->next;
+        free(atual);
+        atual = seguinte;
+        cont++;
+    }
+    *lista = NULL;
+    printf("\nMemória de %d nós Dono libertada.\n", cont);
+}
+
+// --- libertar Carros ---
+void libertarListaCarros(NodeCarro** lista) {
+    NodeCarro *atual = *lista, *seguinte;
+    int cont = 0;
+    while (atual) {
+        seguinte = atual->next;
+        free(atual);
+        atual = seguinte;
+        cont++;
+    }
+    *lista = NULL;
+    printf("\nMemória de %d nós Carro libertada.\n", cont);
+}
+
+// --- libertar Sensores ---
+void libertarListaSensores(NodeSensor** lista) {
+    NodeSensor *atual = *lista, *seguinte;
+    int cont = 0;
+    while (atual) {
+        seguinte = atual->next;
+        free(atual);
+        atual = seguinte;
+        cont++;
+    }
+    *lista = NULL;
+    printf("\nMemória de %d nós Sensor libertada.\n", cont);
+}
+
+// --- libertar Distâncias ---
+void libertarListaDistancias(NodeDistancia** lista) {
+    NodeDistancia *atual = *lista, *seguinte;
+    int cont = 0;
+    while (atual) {
+        seguinte = atual->next;
+        free(atual);
+        atual = seguinte;
+        cont++;
+    }
+    *lista = NULL;
+    printf("\nMemória de %d nós Distancia libertada.\n", cont);
+}
+
+// --- libertar Passagens ---
+void libertarListaPassagens(NodePassagem** lista) {
+    NodePassagem *atual = *lista, *seguinte;
+    int cont = 0;
+    while (atual) {
+        seguinte = atual->next;
+        free(atual);
+        atual = seguinte;
+        cont++;
+    }
+    *lista = NULL;
+    printf("\nMemória de %d nós Passagem libertada.\n", cont);
+}
+
+typedef struct TreeNode {
+    Passagem *p;
+    struct TreeNode *l, *r;
+  } TreeNode;
+  
+  void insertTree(TreeNode **root, Passagem *p) {
+    if (!*root) {
+      *root = malloc(sizeof **root);
+      (*root)->p = p; (*root)->l = (*root)->r = NULL;
+    } else if (p->idVeiculo < (*root)->p->idVeiculo)
+      insertTree(&(*root)->l, p);
+    else
+      insertTree(&(*root)->r, p);
+  }

@@ -484,61 +484,70 @@ void lerDistancias(const char* nomeFicheiro, NodeDistancia** listaDistancias) {
     printf(">> Ficheiro %s lido e distâncias carregadas.\n", nomeFicheiro);
 }
 
+
+// Pool de nós do tipo NodePassagem
+static NodePassagem *passPool = NULL;
+static size_t poolPos = 0, poolSize = 0;
+
+// Inicializa o pool para N nós de NodePassagem
+static void pool_init_passagens(size_t N) {
+    passPool = malloc(N * sizeof(*passPool));
+    poolPos  = 0;
+    poolSize = N;
+}
+
+// Aloca 1 nó do pool
+static NodePassagem *pool_alloc_passagem(void) {
+    if (poolPos >= poolSize) return NULL;
+    return &passPool[poolPos++];
+}
+
+
 void lerPassagens(const char* nomeFicheiro, NodePassagem** listaPassagens) {
     FILE *fp = fopen(nomeFicheiro, "r");
     if (!fp) {
-        fprintf(stderr, "Erro ao abrir ficheiro: %s\n", nomeFicheiro);
+        fprintf(stderr, "Erro ao abrir %s\n", nomeFicheiro);
         *listaPassagens = NULL;
         return;
     }
 
+    // 1) Contar linhas úteis
+    size_t lines = 0;
+    char buf[256];
+    while (fgets(buf, sizeof buf, fp))
+       if (strchr(buf, '\t')) lines++;
+    rewind(fp);
+
+    // 2) Prepara pool
+    pool_init_passagens(lines);
+
     *listaPassagens = NULL;
-    printf("\n>> A ler o ficheiro %s...\n", nomeFicheiro);
+    NodePassagem *tail = NULL;
 
-    char linha[256];
-    while (fgets(linha, sizeof(linha), fp)) {
-        if (!strchr(linha, '\t')) 
-            continue;
+    // 3) Faz o parsing e insere em O(1) do pool
+    while (fgets(buf, sizeof buf, fp)) {
+        if (!strchr(buf, '\t')) continue;
+        char *tok = strtok(buf, "\t");
+        int s = tok ? atoi(tok) : 0;
+        tok = strtok(NULL, "\t");     int v = tok ? atoi(tok) : 0;
+        tok = strtok(NULL, "\t");     char dt[PASSAGEM_MAX_DATAHORA] = "";
+                                       if (tok) strncpy(dt, tok, sizeof dt-1);
+        tok = strtok(NULL, "\t\n");   int t = tok ? atoi(tok) : 0;
 
-        char *token = strtok(linha, "\t");
-        if (!token) continue;
-        int idSensor = atoi(token);
+        NodePassagem *no = pool_alloc_passagem();
+        no->passagem.idSensor     = s;
+        no->passagem.idVeiculo    = v;
+        strcpy(no->passagem.dataHora, dt);
+        no->passagem.tipoRegisto  = t;
+        no->next = NULL;
 
-        token = strtok(NULL, "\t");
-        if (!token) continue;
-        int idVeiculo = atoi(token);
-
-        token = strtok(NULL, "\t");
-        if (!token) continue;
-        char dataHora[PASSAGEM_MAX_DATAHORA];
-        strncpy(dataHora, token, PASSAGEM_MAX_DATAHORA-1);
-        dataHora[PASSAGEM_MAX_DATAHORA-1] = '\0';
-
-        token = strtok(NULL, "\t\n\r");
-        if (!token) continue;
-        int tipo = atoi(token);
-
-        NodePassagem *no = malloc(sizeof(NodePassagem));
-        if (!no) {
-            fprintf(stderr, "Erro crítico: malloc em lerPassagens()\n");
-            fclose(fp);
-            libertarListaPassagensParcial(listaPassagens);
-            return;
+        if (!*listaPassagens) {
+            *listaPassagens = tail = no;
+        } else {
+            tail->next = no;
+            tail = no;
         }
-
-        no->passagem.idSensor     = idSensor;
-        no->passagem.idVeiculo    = idVeiculo;
-        strcpy(no->passagem.dataHora, dataHora);
-        no->passagem.tipoRegisto  = tipo;
-
-        printf("   -> Confirmado Passagem: Sensor %d, Veículo %d, %s, Tipo=%s\n",
-               idSensor, idVeiculo, dataHora,
-               tipo==0 ? "entrada" : "saída");
-
-        no->next = *listaPassagens;
-        *listaPassagens = no;
     }
-
     fclose(fp);
-    printf(">> Ficheiro %s lido e passagens carregadas.\n", nomeFicheiro);
+    printf("Lidas %zu passagens (pool de %zu nós).\n", poolPos, poolSize);
 }
