@@ -69,6 +69,40 @@ static void libertarListaSensoresParcial(NodeSensor** lista) {
     }
 }
 
+/**
+ * @brief Liberta todos os nós de NodeDistancia de uma lista.
+ *        Usada internamente se ocorrer erro de malloc em lerDistancias().
+ */
+static void libertarListaDistanciasParcial(NodeDistancia** lista) {
+    NodeDistancia *atual = *lista, *seguinte;
+    int cont = 0;
+    while (atual) {
+        seguinte = atual->next;
+        free(atual);
+        atual = seguinte;
+        cont++;
+    }
+    *lista = NULL;
+    if (cont > 0) {
+        fprintf(stderr, " -> Memória de %d nós Distancia libertada por erro.\n", cont);
+    }
+}
+
+/* Função auxiliar para libertar parcialmente em caso de erro */
+static void libertarListaPassagensParcial(NodePassagem** lista) {
+    NodePassagem *atual = *lista, *seguinte;
+    int cont = 0;
+    while (atual) {
+        seguinte = atual->next;
+        free(atual);
+        atual = seguinte;
+        cont++;
+    }
+    *lista = NULL;
+    if (cont > 0) {
+        fprintf(stderr, " -> Memória de %d nós Passagem libertada por erro.\n", cont);
+    }
+}
 
 
 
@@ -182,25 +216,36 @@ void ordenar_por_nome(Dono *donos, int total){
 }
 
 void ordenar_donos(const char *ficheiro) {
-    Dono donos[MAX_DONOS];               
-    int total = ler_donos(ficheiro,
-                         donos,          
-                         MAX_DONOS);
-    if (total < 0) {
-        printf("Erro a ler donos\n");
+    NodeDono* lista = NULL;
+    lerDonos(ficheiro, &lista);
+    if (!lista) {
+        printf("Erro a ler ficheiro de donos ou lista vazia.\n");
         return;
     }
-    ordenar_por_nome(donos, total);
-    printf("\nDonos ordenados alfabeticamente:\n");
-    for (int i = 0; i < total; i++) {
-        printf(" %2d) Nome: %s | NIF: %d | CP: %s\n",
-               i+1,
-               donos[i].nome,
-               donos[i].numeroContribuinte,
-               donos[i].codigoPostal);
-    }
-}
 
+    Dono array[MAX_DONOS];
+    int total = 0;
+    for (NodeDono* p = lista; p && total < MAX_DONOS; p = p->next) {
+        array[total++] = p->dono;
+    }
+    if (total == 0) {
+        printf("Não foram lidos donos.\n");
+        return;
+    }
+
+    ordenar_por_nome(array, total);
+
+    printf("\n--- Donos ordenados alfabeticamente ---\n");
+    for (int i = 0; i < total; i++) {
+        printf("%2d) Nome: %s | NIF: %d | CP: %s\n",
+               i + 1,
+               array[i].nome,
+               array[i].numeroContribuinte,
+               array[i].codigoPostal);
+    }
+
+    libertarListaDonosParcial(&lista);
+}
 
 // --- Funções de Leitura Adicionais (Stubs - a implementar) ---
 // (O código das outras funções lerXxx permanece aqui como stubs)
@@ -383,11 +428,117 @@ void lerSensores(const char* nomeFicheiro, NodeSensor** listaSensores) {
 }
 
 void lerDistancias(const char* nomeFicheiro, NodeDistancia** listaDistancias) {
-    printf("Função lerDistancias ainda não implementada.\n");
+    FILE *fp = fopen(nomeFicheiro, "r");
+    if (!fp) {
+        fprintf(stderr, "Erro ao abrir ficheiro: %s\n", nomeFicheiro);
+        *listaDistancias = NULL;
+        return;
+    }
+
     *listaDistancias = NULL;
+    printf("\n>> A ler o ficheiro %s...\n", nomeFicheiro);
+
+    char linha[256];
+    while (fgets(linha, sizeof(linha), fp)) {
+        // Se não tiver tabulação, ignora
+        if (!strchr(linha, '\t')) 
+            continue;
+
+        // Extrai cada campo
+        char *token = strtok(linha, "\t");
+        if (!token) continue;
+        int id1 = atoi(token);
+
+        token = strtok(NULL, "\t");
+        if (!token) continue;
+        int id2 = atoi(token);
+
+        token = strtok(NULL, "\t\n\r");
+        if (!token) continue;
+        float dist = atof(token);
+
+        // Aloca novo nó
+        NodeDistancia *no = malloc(sizeof(NodeDistancia));
+        if (!no) {
+            fprintf(stderr, "Erro crítico: falha malloc em lerDistancias()\n");
+            fclose(fp);
+            libertarListaDistanciasParcial(listaDistancias);
+            return;
+        }
+
+        // Preenche campos
+        no->distancia.idSensor1 = id1;
+        no->distancia.idSensor2 = id2;
+        no->distancia.distancia  = dist;
+
+        // Confirmação (opcional)
+        printf("   -> Confirmado Distancia: %d->%d = %.3f km\n",
+               id1, id2, dist);
+
+        // Insere no início da lista
+        no->next = *listaDistancias;
+        *listaDistancias = no;
+    }
+
+    fclose(fp);
+    printf(">> Ficheiro %s lido e distâncias carregadas.\n", nomeFicheiro);
 }
 
 void lerPassagens(const char* nomeFicheiro, NodePassagem** listaPassagens) {
-    printf("Função lerPassagens ainda não implementada.\n");
+    FILE *fp = fopen(nomeFicheiro, "r");
+    if (!fp) {
+        fprintf(stderr, "Erro ao abrir ficheiro: %s\n", nomeFicheiro);
+        *listaPassagens = NULL;
+        return;
+    }
+
     *listaPassagens = NULL;
+    printf("\n>> A ler o ficheiro %s...\n", nomeFicheiro);
+
+    char linha[256];
+    while (fgets(linha, sizeof(linha), fp)) {
+        if (!strchr(linha, '\t')) 
+            continue;
+
+        char *token = strtok(linha, "\t");
+        if (!token) continue;
+        int idSensor = atoi(token);
+
+        token = strtok(NULL, "\t");
+        if (!token) continue;
+        int idVeiculo = atoi(token);
+
+        token = strtok(NULL, "\t");
+        if (!token) continue;
+        char dataHora[PASSAGEM_MAX_DATAHORA];
+        strncpy(dataHora, token, PASSAGEM_MAX_DATAHORA-1);
+        dataHora[PASSAGEM_MAX_DATAHORA-1] = '\0';
+
+        token = strtok(NULL, "\t\n\r");
+        if (!token) continue;
+        int tipo = atoi(token);
+
+        NodePassagem *no = malloc(sizeof(NodePassagem));
+        if (!no) {
+            fprintf(stderr, "Erro crítico: malloc em lerPassagens()\n");
+            fclose(fp);
+            libertarListaPassagensParcial(listaPassagens);
+            return;
+        }
+
+        no->passagem.idSensor     = idSensor;
+        no->passagem.idVeiculo    = idVeiculo;
+        strcpy(no->passagem.dataHora, dataHora);
+        no->passagem.tipoRegisto  = tipo;
+
+        printf("   -> Confirmado Passagem: Sensor %d, Veículo %d, %s, Tipo=%s\n",
+               idSensor, idVeiculo, dataHora,
+               tipo==0 ? "entrada" : "saída");
+
+        no->next = *listaPassagens;
+        *listaPassagens = no;
+    }
+
+    fclose(fp);
+    printf(">> Ficheiro %s lido e passagens carregadas.\n", nomeFicheiro);
 }
