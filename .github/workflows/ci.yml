@@ -1,6 +1,5 @@
 name: C Project CI
 
-# Dispara em pushes e pull-requests na main (ou outra branch)
 on:
   push:
     branches: [ main ]
@@ -10,25 +9,43 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
 
     steps:
-    - name: Checkout code
+    - name: Check out repository
       uses: actions/checkout@v3
 
     - name: Install build tools
       run: sudo apt-get update && sudo apt-get install -y build-essential
 
-    - name: Compile with optimization
-      run: gcc -O2 -Iinclude -o portagens src/main.c src/read_files.c src/operations.c src/data.c
+    - name: Compile release build
+      run: |
+        gcc -O2 -Iinclude -o portagens \
+          src/main.c src/read_files.c src/operations.c src/data.c
 
     - name: Functional test with small fixtures
       run: |
-        # (criares no repositório um ficheiro pass_test.txt com 10 linhas de exemplo)
-        ./portagens pass_test.txt > out.txt
-        # verifica que lê pelo menos a primeira linha
+        echo "=== Functional smoke test ==="
+        ./portagens \
+          test/donos_test.txt \
+          test/carros_test.txt \
+          test/sensores_test.txt \
+          test/dist_test.txt \
+          test/pass_test.txt \
+        > out.txt
+        # verify that we at least parsed one owner and one car
         grep -q "1) NIF=" out.txt
+        grep -q "1) Mat=" out.txt
 
     - name: Memory check with AddressSanitizer
       run: |
         gcc -g -fsanitize=address -Iinclude -o port_san src/*.c
-        ./port_san pass_test.txt
+        ./port_san \
+          test/donos_test.txt \
+          test/carros_test.txt \
+          test/sensores_test.txt \
+          test/dist_test.txt \
+          test/pass_test.txt
+
