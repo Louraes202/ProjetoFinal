@@ -9,6 +9,8 @@
 #define SENSOR_MAX_LATITUDE 20
 #define SENSOR_MAX_LONGITUDE 20
 #define PASSAGEM_MAX_DATAHORA 30
+#define MAX_DONOS 1000 // s.a.a.
+#define MAX_CARROS 1000 // s.a.a.
 
 /*
  * Representa um Dono (conforme o enunciado: numContribuinte, nome, codPostal).

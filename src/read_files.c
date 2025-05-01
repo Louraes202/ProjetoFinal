@@ -29,7 +29,7 @@ static void libertarListaDonosParcial(NodeDono** lista) {
 
     *lista = NULL; // Define o ponteiro original da lista como NULL
     if (count > 0) {
-         fprintf(stderr, " -> Memória de %d nós libertada devido a erro.\n", count);
+         fprintf(stderr, " -> Memória de %d nós libertada.\n", count);
     }
 }
 
@@ -49,9 +49,27 @@ static void libertarListaCarrosParcial(NodeCarro** lista) {
     }
     *lista = NULL; // Define o ponteiro original da lista como NULL
     if (count > 0) {
-         fprintf(stderr, " -> Memória de %d nós Carro libertada devido a erro.\n", count);
+         fprintf(stderr, " -> Memória de %d nós Carro libertada.\n", count);
     }
 }
+
+// --- Função Auxiliar Estática para Liberar Sensores em Caso de Erro ---
+static void libertarListaSensoresParcial(NodeSensor** lista) {
+    NodeSensor *atual = *lista, *proximo;
+    int count = 0;
+    while (atual) {
+        proximo = atual->next;
+        free(atual);
+        atual = proximo;
+        count++;
+    }
+    *lista = NULL;
+    if (count > 0) {
+        fprintf(stderr, " -> Memória de %d nós Sensor libertada.\n", count);
+    }
+}
+
+
 
 
 // --- Função Principal de Leitura de Donos ---
@@ -150,6 +168,39 @@ void lerDonos(const char* nomeFicheiro, NodeDono** listaDonos) {
     printf(">> Ficheiro %s lido e dados dos donos carregados para a lista ligada.\n", nomeFicheiro);
 }
 
+void ordenar_por_nome(Dono *donos, int total){
+    for(int i = 0; i < total - 1; i++){
+        for(int j = 0; j < total - i - 1; j++){
+            // compara nome[j] com nome[j+1]:
+            if ( strcmp(donos[j].nome, donos[j+1].nome) > 0 ) {
+                Dono tmp = donos[j];
+                donos[j] = donos[j + 1];
+                donos[j + 1] = tmp;
+            }
+        }
+    }
+}
+
+void ordenar_donos(const char *ficheiro) {
+    Dono donos[MAX_DONOS];               
+    int total = ler_donos(ficheiro,
+                         donos,          
+                         MAX_DONOS);
+    if (total < 0) {
+        printf("Erro a ler donos\n");
+        return;
+    }
+    ordenar_por_nome(donos, total);
+    printf("\nDonos ordenados alfabeticamente:\n");
+    for (int i = 0; i < total; i++) {
+        printf(" %2d) Nome: %s | NIF: %d | CP: %s\n",
+               i+1,
+               donos[i].nome,
+               donos[i].numeroContribuinte,
+               donos[i].codigoPostal);
+    }
+}
+
 
 // --- Funções de Leitura Adicionais (Stubs - a implementar) ---
 // (O código das outras funções lerXxx permanece aqui como stubs)
@@ -242,7 +293,7 @@ void lerCarros(const char* nomeFicheiro, NodeCarro** listaCarros) {
         novoNode->carro.idVeiculo = idVeiculoLido;
 
         // Confirmação (opcional)
-         printf("   -> Confirmado no nó Carro: %s, %s %s (%d), Dono:%d, ID:%d\n",
+        printf("   -> Confirmado no nó Carro: %s, %s %s (%d), Dono:%d, ID:%d\n",
                 novoNode->carro.matricula, novoNode->carro.marca, novoNode->carro.modelo,
                 novoNode->carro.ano, novoNode->carro.donoContribuinte, novoNode->carro.idVeiculo);
 
@@ -258,9 +309,77 @@ void lerCarros(const char* nomeFicheiro, NodeCarro** listaCarros) {
 }
 
 
+// --- Implementação de lerSensores() ---
 void lerSensores(const char* nomeFicheiro, NodeSensor** listaSensores) {
-    printf("Função lerSensores ainda não implementada.\n");
-    *listaSensores = NULL;
+    FILE *fp = fopen(nomeFicheiro, "r");
+    if (!fp) {
+        fprintf(stderr, "Erro ao abrir ficheiro: %s\n", nomeFicheiro);
+        *listaSensores = NULL;
+        return;
+    }
+
+    *listaSensores = NULL;  // inicia lista vazia
+    printf("\n>> A ler o ficheiro %s...\n", nomeFicheiro);
+
+    char linha[512];
+    while (fgets(linha, sizeof(linha), fp)) {
+        // ignora linhas sem tab
+        if (!strchr(linha, '\t')) 
+            continue;
+
+        // buffers temporários para separar campos
+        int  idSensorLido;
+        char designacaoLida[SENSOR_MAX_DESIGNACAO];
+        char latitudeLida[SENSOR_MAX_LATITUDE];
+        char longitudeLida[SENSOR_MAX_LONGITUDE];
+
+        // Parsing com strtok por '\t'
+        char *token = strtok(linha, "\t");
+        if (!token) continue;
+        idSensorLido = atoi(token);
+
+        token = strtok(NULL, "\t");
+        if (!token) continue;
+        strncpy(designacaoLida, token, SENSOR_MAX_DESIGNACAO-1);
+        designacaoLida[SENSOR_MAX_DESIGNACAO-1] = '\0';
+
+        token = strtok(NULL, "\t");
+        if (!token) continue;
+        strncpy(latitudeLida, token, SENSOR_MAX_LATITUDE-1);
+        latitudeLida[SENSOR_MAX_LATITUDE-1] = '\0';
+
+        token = strtok(NULL, "\t\n\r");
+        if (!token) continue;
+        strncpy(longitudeLida, token, SENSOR_MAX_LONGITUDE-1);
+        longitudeLida[SENSOR_MAX_LONGITUDE-1] = '\0';
+
+        // aloca e preenche o novo nó
+        NodeSensor *novo = malloc(sizeof(NodeSensor));
+        if (!novo) {
+            fprintf(stderr, "Erro Crítico: falha malloc em lerSensores()\n");
+            fclose(fp);
+            libertarListaSensoresParcial(listaSensores);
+            return;
+        }
+        novo->sensor.idSensor     = idSensorLido;
+        strcpy(novo->sensor.designacao, designacaoLida);
+        strcpy(novo->sensor.latitude,    latitudeLida);
+        strcpy(novo->sensor.longitude,   longitudeLida);
+
+        // (opcional) confirmação no nó
+        printf("   -> Confirmado Sensor: ID=%d, %s, %s, %s\n",
+               novo->sensor.idSensor,
+               novo->sensor.designacao,
+               novo->sensor.latitude,
+               novo->sensor.longitude);
+
+        // insere no início da lista ligada
+        novo->next = *listaSensores;
+        *listaSensores = novo;
+    }
+
+    fclose(fp);
+    printf(">> Ficheiro %s lido e dados de sensores carregados.\n", nomeFicheiro);
 }
 
 void lerDistancias(const char* nomeFicheiro, NodeDistancia** listaDistancias) {
