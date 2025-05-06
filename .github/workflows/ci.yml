@@ -23,8 +23,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y build-essential
 
       - name: Compile with warnings and symbols
-        run: gcc -Wall -Wextra -O2 -Iinclude -o portagens \
-               src/main.c src/read_files.c src/operations.c src/data.c
+        run: gcc -Wall -Wextra -O2 -Iinclude -o portagens src/main.c src/read_files.c src/operations.c src/data.c
 
       # 1) Teste de lerDonos
       - name: Test lerDonos
