@@ -11,33 +11,29 @@
 #endif
 
 
-int main(void) {
-    NodePassagem* lista = NULL;
-    const char *ficheiro = "passagem.txt";
+int main(int argc, char *argv[]) {
+  NodePassagem* lista = NULL;
+  const char *ficheiro;
 
-    // Início da medição
-    clock_t inicio = clock();
+  if (argc == 2) {
+      // ./portagens pass_test.txt
+      ficheiro = argv[1];
+  }
+  else if (argc == 3 && strcmp(argv[1], "--test-passagens")==0) {
+      // ./portagens --test-passagens test/passagens_test.txt
+      ficheiro = argv[2];
+  }
+  else {
+      // modo normal: usa o ficheiro da pasta de dados
+      ficheiro = "passagem.txt";
+  }
 
-    // Chama a função que queremos medir
-    lerPassagens(ficheiro, &lista);
+  clock_t inicio = clock();
+  lerPassagens(ficheiro, &lista);
+  clock_t fim = clock();
+  double tempo_cpu = (double)(fim - inicio) / CLOCKS_PER_SEC;
+  printf("Tempo de CPU gasto pela lerPassagens(): %.3f s\n", tempo_cpu);
 
-    // Fim da medição
-    clock_t fim = clock();
-
-    // Calcula o tempo (em segundos)
-    double tempo_cpu = (double)(fim - inicio) / CLOCKS_PER_SEC;
-    printf("Tempo de CPU gasto pela lerPassagens(): %.3f s\n", tempo_cpu);
-
-    // (opcional) se quiser tempo real de relógio em POSIX:
-    // struct timespec t1, t2;
-    // clock_gettime(CLOCK_MONOTONIC, &t1);
-    // lerPassagens(...);
-    // clock_gettime(CLOCK_MONOTONIC, &t2);
-    // double real = (t2.tv_sec - t1.tv_sec) + (t2.tv_nsec - t1.tv_nsec)/1e9;
-    // printf("Tempo real gasto: %.3f s\n", real);
-
-    // … imprimir ou libertar lista …
-
-    libertarListaPassagens(&lista);
-    return 0;
+  libertarListaPassagens(&lista);
+  return 0;
 }
