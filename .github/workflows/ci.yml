@@ -1,51 +1,65 @@
-name: C Project CI
+name: Phase 1 CI
 
 on:
   push:
-    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'include/**'
+      - 'test/**'
   pull_request:
-    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'include/**'
+      - 'test/**'
 
 jobs:
-  build-and-test:
+  phase1:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ${{ github.workspace }}
-
     steps:
-    - name: Check out repository
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Install build tools
-      run: sudo apt-get update && sudo apt-get install -y build-essential
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y build-essential
 
-    - name: Compile release build
-      run: |
-        gcc -O2 -Iinclude -o portagens \
-          src/main.c src/read_files.c src/operations.c src/data.c
+      - name: Compile with warnings and symbols
+        run: gcc -Wall -Wextra -O2 -Iinclude -o portagens \
+               src/main.c src/read_files.c src/operations.c src/data.c
 
-    - name: Functional test with small fixtures
-      run: |
-        echo "=== Functional smoke test ==="
-        ./portagens \
-          test/donos_test.txt \
-          test/carros_test.txt \
-          test/sensores_test.txt \
-          test/dist_test.txt \
-          test/pass_test.txt \
-        > out.txt
-        # verify that we at least parsed one owner and one car
-        grep -q "1) NIF=" out.txt
-        grep -q "1) Mat=" out.txt
+      # 1) Teste de lerDonos
+      - name: Test lerDonos
+        run: |
+          ./portagens --test-donos test/donos_test.txt > out_donos.txt
+          # espera encontrar pelo menos 3 entradas e ignorar a malformada
+          grep -c "NIF=" out_donos.txt | grep -qE '^[23]$'
 
-    - name: Memory check with AddressSanitizer
-      run: |
-        gcc -g -fsanitize=address -Iinclude -o port_san src/*.c
-        ./port_san \
-          test/donos_test.txt \
-          test/carros_test.txt \
-          test/sensores_test.txt \
-          test/dist_test.txt \
-          test/pass_test.txt
+      # 2) Teste de lerCarros
+      - name: Test lerCarros
+        run: |
+          ./portagens --test-carros test/carros_test.txt > out_carros.txt
+          grep -q "Mat=" out_carros.txt
 
+      # 3) Teste de lerSensores
+      - name: Test lerSensores
+        run: |
+          ./portagens --test-sensores test/sensores_test.txt > out_sensores.txt
+          grep -q "ID=" out_sensores.txt
+
+      # 4) Teste de lerDistancias
+      - name: Test lerDistancias
+        run: |
+          ./portagens --test-distancias test/distancias_test.txt > out_dist.txt
+          grep -q "->" out_dist.txt
+
+      # 5) Teste de lerPassagens
+      - name: Test lerPassagens
+        run: |
+          ./portagens --test-passagens test/passagens_test.txt > out_pass.txt
+          # verifica que há pelo menos 5 registos lidos
+          grep -c "idVeiculo" out_pass.txt | awk '{exit !($1 >= 5)}'
+
+      # 6) Memory & bounds check
+      - name: Sanitizer check passagens
+        run: |
+          gcc -g -fsanitize=address -Iinclude -o port_san src/*.c
+          ./port_san --test-passagens test/passagens_test.txt
