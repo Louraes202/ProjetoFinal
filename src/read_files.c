@@ -1,6 +1,6 @@
 #include "read_files.h" // Assume que declara lerDonos e inclui data.h
 #include "data.h"       // Para NodeDono, Dono, e constantes de tamanho
-#include <stdio.h>      // fopen, fgets, fclose, fprintf, stderr, printf
+#include <stdio.h>      // fopen, fgets, fclose, fprintf, , printf
 #include <stdlib.h>     // malloc, free, atoi
 #include <string.h>     // strtok, strcpy, strncpy, strchr
 
@@ -29,7 +29,7 @@ static void libertarListaDonosParcial(NodeDono** lista) {
 
     *lista = NULL; // Define o ponteiro original da lista como NULL
     if (count > 0) {
-         fprintf(stderr, " -> Memória de %d nós libertada.\n", count);
+         fprintf(" -> Memória de %d nós libertada.\n", count);
     }
 }
 
@@ -49,7 +49,7 @@ static void libertarListaCarrosParcial(NodeCarro** lista) {
     }
     *lista = NULL; // Define o ponteiro original da lista como NULL
     if (count > 0) {
-         fprintf(stderr, " -> Memória de %d nós Carro libertada.\n", count);
+         fprintf(" -> Memória de %d nós Carro libertada.\n", count);
     }
 }
 
@@ -65,7 +65,7 @@ static void libertarListaSensoresParcial(NodeSensor** lista) {
     }
     *lista = NULL;
     if (count > 0) {
-        fprintf(stderr, " -> Memória de %d nós Sensor libertada.\n", count);
+        fprintf(" -> Memória de %d nós Sensor libertada.\n", count);
     }
 }
 
@@ -84,7 +84,7 @@ static void libertarListaDistanciasParcial(NodeDistancia** lista) {
     }
     *lista = NULL;
     if (cont > 0) {
-        fprintf(stderr, " -> Memória de %d nós Distancia libertada por erro.\n", cont);
+        fprintf(" -> Memória de %d nós Distancia libertada por erro.\n", cont);
     }
 }
 
@@ -100,7 +100,7 @@ static void libertarListaPassagensParcial(NodePassagem** lista) {
     }
     *lista = NULL;
     if (cont > 0) {
-        fprintf(stderr, " -> Memória de %d nós Passagem libertada por erro.\n", cont);
+        fprintf(" -> Memória de %d nós Passagem libertada por erro.\n", cont);
     }
 }
 
@@ -118,7 +118,7 @@ void lerDonos(const char* nomeFicheiro, NodeDono** listaDonos) {
     // 1. Abrir o ficheiro
     FILE *fp = fopen(nomeFicheiro, "r");
     if (!fp) {
-        fprintf(stderr, "Erro ao abrir ficheiro: %s\n", nomeFicheiro);
+        fprintf("Erro ao abrir ficheiro: %s\n", nomeFicheiro);
         *listaDonos = NULL;
         return;
     }
@@ -246,7 +246,7 @@ void lerCarros(const char* nomeFicheiro, NodeCarro** listaCarros) {
     // 1. Abrir o ficheiro
     FILE *fp = fopen(nomeFicheiro, "r");
     if (!fp) {
-        fprintf(stderr, "Erro ao abrir ficheiro: %s\n", nomeFicheiro);
+        fprintf("Erro ao abrir ficheiro: %s\n", nomeFicheiro);
         *listaCarros = NULL;
         return;
     }
@@ -342,7 +342,7 @@ void lerCarros(const char* nomeFicheiro, NodeCarro** listaCarros) {
 void lerSensores(const char* nomeFicheiro, NodeSensor** listaSensores) {
     FILE *fp = fopen(nomeFicheiro, "r");
     if (!fp) {
-        fprintf(stderr, "Erro ao abrir ficheiro: %s\n", nomeFicheiro);
+        fprintf("Erro ao abrir ficheiro: %s\n", nomeFicheiro);
         *listaSensores = NULL;
         return;
     }
@@ -412,7 +412,7 @@ void lerSensores(const char* nomeFicheiro, NodeSensor** listaSensores) {
 void lerDistancias(const char* nomeFicheiro, NodeDistancia** listaDistancias) {
     FILE *fp = fopen(nomeFicheiro, "r");
     if (!fp) {
-        fprintf(stderr, "Erro ao abrir ficheiro: %s\n", nomeFicheiro);
+        fprintf("Erro ao abrir ficheiro: %s\n", nomeFicheiro);
         *listaDistancias = NULL;
         return;
     }
@@ -496,7 +496,7 @@ static NodePassagem *pool_alloc_passagem(void) {
 void lerPassagens(const char* nomeFicheiro, NodePassagem** listaPassagens) {
     FILE *fp = fopen(nomeFicheiro, "r");
     if (!fp) {
-        fprintf(stderr, "Erro ao abrir %s\n", nomeFicheiro);
+        fprintf("Erro ao abrir %s\n", nomeFicheiro);
         *listaPassagens = NULL;
         return;
     }
