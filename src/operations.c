@@ -5,6 +5,12 @@
 #include "operations.h"
 
 // --- Donos ---
+/**
+ * @brief Esta função percorre a lista de donos e imprime os dados de cada um deles no terminal.
+ * Caso a lista esteja vazia, uma mensagem apropriada será exibida.
+ * 
+ * @param lista 
+ */
 void imprimirListaDonos(NodeDono* lista) {
     printf("\n--- Lista de Donos ---\n");
     if (!lista) {
@@ -22,6 +28,13 @@ void imprimirListaDonos(NodeDono* lista) {
 }
 
 // --- Carros ---
+
+/**
+ * @brief Esta função percorre a lista de carros e imprime os dados de cada carro no terminal.
+ * Se a lista estiver vazia, será impressa uma mensagem de aviso.
+ * 
+ * @param lista 
+ */
 void imprimirListaCarros(NodeCarro* lista) {
     printf("\n--- Lista de Carros ---\n");
     if (!lista) {
@@ -42,6 +55,13 @@ void imprimirListaCarros(NodeCarro* lista) {
 }
 
 // --- Sensores ---
+
+/**
+ * @brief  A função imprime os pares de sensores e a distância entre eles. 
+ * Caso a lista esteja vazia, informa o usuário.
+ * 
+ * @param lista 
+ */
 void imprimirListaSensores(NodeSensor* lista) {
     printf("\n--- Lista de Sensores ---\n");
     if (!lista) {
@@ -60,6 +80,13 @@ void imprimirListaSensores(NodeSensor* lista) {
 }
 
 // --- Distâncias ---
+
+/**
+ * @brief A função exibe o histórico de passagens dos veículos pelos sensores,
+ * incluindo o tipo de registo ("entrada" ou "saída").
+ * 
+ * @param lista 
+ */
 void imprimirListaDistancias(NodeDistancia* lista) {
     printf("\n--- Lista de Distâncias ---\n");
     if (!lista) {
@@ -77,6 +104,13 @@ void imprimirListaDistancias(NodeDistancia* lista) {
 }
 
 // --- Passagens ---
+
+/**
+ * @brief Percorre a lista e desaloca cada nó, liberando toda a memória associada.
+ * Ao final, define o ponteiro da lista como NULL.
+ * 
+ * @param lista 
+ */
 void imprimirListaPassagens(NodePassagem* lista) {
     printf("\n--- Lista de Passagens ---\n");
     if (!lista) {
@@ -95,6 +129,12 @@ void imprimirListaPassagens(NodePassagem* lista) {
 }
 
 // --- libertar Donos ---
+
+/**
+ * @brief Liberta toda a memória da lista ligada de carros e define o ponteiro como NULL.
+ * 
+ * @param lista 
+ */
 void libertarListaDonos(NodeDono** lista) {
     NodeDono *atual = *lista, *seguinte;
     int cont = 0;
@@ -109,6 +149,12 @@ void libertarListaDonos(NodeDono** lista) {
 }
 
 // --- libertar Carros ---
+
+/**
+ * @brief A função percorre a lista e desaloca cada nó da estrutura ligada de sensores.
+ * 
+ * @param lista 
+ */
 void libertarListaCarros(NodeCarro** lista) {
     NodeCarro *atual = *lista, *seguinte;
     int cont = 0;
@@ -123,6 +169,12 @@ void libertarListaCarros(NodeCarro** lista) {
 }
 
 // --- libertar Sensores ---
+
+/**
+ * @brief Remove cada nó da lista de distâncias e libera a memória.
+ * 
+ * @param lista 
+ */
 void libertarListaSensores(NodeSensor** lista) {
     NodeSensor *atual = *lista, *seguinte;
     int cont = 0;
@@ -137,6 +189,12 @@ void libertarListaSensores(NodeSensor** lista) {
 }
 
 // --- libertar Distâncias ---
+
+/**
+ * @brief Desaloca cada nó da lista ligada de passagens, limpando completamente a memória usada.
+ * 
+ * @param lista 
+ */
 void libertarListaDistancias(NodeDistancia** lista) {
     NodeDistancia *atual = *lista, *seguinte;
     int cont = 0;
@@ -151,6 +209,12 @@ void libertarListaDistancias(NodeDistancia** lista) {
 }
 
 // --- libertar Passagens ---
+
+/**
+ * @brief Cada nó armazena um ponteiro para uma passagem e ponteiros para os nós esquerdo e direito.
+ * 
+ * @param lista 
+ */
 void libertarListaPassagens(NodePassagem** lista) {
     NodePassagem *atual = *lista, *seguinte;
     int cont = 0;
@@ -168,7 +232,16 @@ typedef struct TreeNode {
     Passagem *p;
     struct TreeNode *l, *r;
   } TreeNode;
-  
+
+  // --- Insert Tree  ---
+
+  /**
+   * @brief A função insere a nova passagem de forma ordenada na árvore binária,
+ * usando o id do veículo como chave de ordenação.
+   * 
+   * @param root 
+   * @param p 
+   */
   void insertTree(TreeNode **root, Passagem *p) {
     if (!*root) {
       *root = malloc(sizeof **root);

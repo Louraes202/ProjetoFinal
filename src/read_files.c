@@ -182,7 +182,12 @@ void lerDonos(const char* nomeFicheiro, NodeDono** listaDonos) {
     fclose(fp);
     printf(">> Ficheiro %s lido e dados dos donos carregados para a lista ligada.\n", nomeFicheiro);
 }
-
+/**
+ * @brief  Ordena um array de donos alfabeticamente pelo nome
+ * 
+ * @param donos 
+ * @param total 
+ */
 void ordenar_por_nome(Dono *donos, int total){
     for(int i = 0; i < total - 1; i++){
         for(int j = 0; j < total - i - 1; j++){
@@ -194,7 +199,11 @@ void ordenar_por_nome(Dono *donos, int total){
         }
     }
 }
-
+/**
+ * @brief Lê os donos a partir de um ficheiro, ordena-os por nome e imprime no ecrã.
+ * 
+ * @param ficheiro 
+ */
 void ordenar_donos(const char *ficheiro) {
     NodeDono* lista = NULL;
     lerDonos(ficheiro, &lista);
@@ -227,8 +236,11 @@ void ordenar_donos(const char *ficheiro) {
     libertarListaDonosParcial(&lista);
 }
 
-/*
- * Lê os dados dos carros do ficheiro especificado e preenche a lista ligada.
+/**
+ * @brief Lê os dados dos carros do ficheiro especificado e preenche a lista ligada.
+ * 
+ * @param nomeFicheiro 
+ * @param listaCarros 
  */
 void lerCarros(const char* nomeFicheiro, NodeCarro** listaCarros) {
     // 1. Abrir o ficheiro
@@ -321,8 +333,11 @@ void lerCarros(const char* nomeFicheiro, NodeCarro** listaCarros) {
 }
 
 
-/*
- * Lê os dados dos sensores do ficheiro especificado e preenche a lista ligada.
+/**
+ * @brief Lê os dados dos sensores a partir de um ficheiro e constrói uma lista ligada.
+ * 
+ * @param nomeFicheiro 
+ * @param listaSensores 
  */
 void lerSensores(const char* nomeFicheiro, NodeSensor** listaSensores) {
     FILE *fp = fopen(nomeFicheiro, "r");
@@ -388,7 +403,12 @@ void lerSensores(const char* nomeFicheiro, NodeSensor** listaSensores) {
     fclose(fp);
     printf(">> Ficheiro %s lido e dados de sensores carregados.\n", nomeFicheiro);
 }
-
+/**
+ * @brief Lê distâncias entre sensores de um ficheiro e armazena numa lista ligada.
+ * 
+ * @param nomeFicheiro 
+ * @param listaDistancias 
+ */
 void lerDistancias(const char* nomeFicheiro, NodeDistancia** listaDistancias) {
     FILE *fp = fopen(nomeFicheiro, "r");
     if (!fp) {
@@ -445,19 +465,34 @@ static NodePassagem *passPool = NULL;
 static size_t poolPos = 0, poolSize = 0;
 
 // Inicializa o pool para N nós de NodePassagem
+/**
+ * @brief Inicializa um pool de memória para armazenar nós de passagens.
+ * 
+ * @param N 
+ */
 static void pool_init_passagens(size_t N) {
     passPool = malloc(N * sizeof(*passPool));
     poolPos  = 0;
     poolSize = N;
 }
 
-// Aloca 1 nó do pool
+/**
+ * @brief Aloca um novo nó do pool de passagens.
+ * 
+ * @return NodePassagem* 
+ */
 static NodePassagem *pool_alloc_passagem(void) {
     if (poolPos >= poolSize) return NULL;
     return &passPool[poolPos++];
 }
 
-
+/**
+ * @brief Lê os registos de passagens de um ficheiro e armazena-os numa lista ligada.
+ * Usa um pool para alocação eficiente de memória.
+ * 
+ * @param nomeFicheiro 
+ * @param listaPassagens 
+ */
 void lerPassagens(const char* nomeFicheiro, NodePassagem** listaPassagens) {
     FILE *fp = fopen(nomeFicheiro, "r");
     if (!fp) {
