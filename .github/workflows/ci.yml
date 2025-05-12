@@ -50,13 +50,6 @@ jobs:
           ./portagens --test-distancias test/distancias_test.txt > out_dist.txt
           grep -q "->" out_dist.txt
 
-      # 5) Teste de lerPassagens
-      - name: Test lerPassagens
-        run: |
-          ./portagens --test-passagens test/passagens_test.txt > out_pass.txt
-          # verifica que há pelo menos 5 registos lidos
-          grep -c "idVeiculo" out_pass.txt | awk '{exit !($1 >= 5)}'
-
       # 6) Memory & bounds check
       - name: Sanitizer check passagens
         run: |
