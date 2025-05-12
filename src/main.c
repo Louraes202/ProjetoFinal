@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-
+#include <string.h> 
 #include "data.h"
 #include "read_files.h"
 #include "operations.h"
@@ -19,9 +19,12 @@ int main(int argc, char *argv[]) {
       // ./portagens pass_test.txt
       ficheiro = argv[1];
   }
-  else if (argc == 3 && strcmp(argv[1], "--test-passagens")==0) {
-      // ./portagens --test-passagens test/passagens_test.txt
-      ficheiro = argv[2];
+  else if (argc == 3 && strcmp(argv[1], "--test-donos") == 0) {
+      NodeDono* listaDonos = NULL;  // ← necessário!
+      lerDonos(argv[2], &listaDonos);
+      imprimirListaDonos(listaDonos);
+      libertarListaDonos(&listaDonos);
+      return 0;
   }
   else {
       // modo normal: usa o ficheiro da pasta de dados
