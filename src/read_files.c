@@ -112,11 +112,6 @@ static void libertarListaPassagensParcial(NodePassagem** lista) {
  * Função para ler os dados dos donos a partir de um ficheiro de texto
  * e armazená-los numa lista ligada.
  * (Versão com inicialização e libertação de memória em caso de erro no malloc)
- *
- * Parâmetros:
- * nomeFicheiro (const char*): O nome do ficheiro a ser lido (ex: "donos.txt").
- * listaDonos (NodeDono**): Ponteiro para o ponteiro da cabeça da lista ligada de donos.
- * A lista será modificada para incluir os donos lidos.
  */
 void lerDonos(const char* nomeFicheiro, NodeDono** listaDonos) {
 
@@ -124,7 +119,7 @@ void lerDonos(const char* nomeFicheiro, NodeDono** listaDonos) {
     FILE *fp = fopen(nomeFicheiro, "r");
     if (!fp) {
         fprintf(stderr, "Erro ao abrir ficheiro: %s\n", nomeFicheiro);
-        *listaDonos = NULL; // Garante que a lista está vazia se o ficheiro não abrir
+        *listaDonos = NULL;
         return;
     }
 
@@ -135,9 +130,6 @@ void lerDonos(const char* nomeFicheiro, NodeDono** listaDonos) {
     char linha[512];
 
     printf("\n>> A ler o ficheiro %s...\n", nomeFicheiro);
-
-    // *** INICIALIZAÇÃO DA LISTA ADICIONADA ***
-    // Garante que começamos com uma lista vazia, descartando qualquer conteúdo anterior.
     *listaDonos = NULL;
 
     // 3. Ler o ficheiro linha a linha
@@ -147,57 +139,46 @@ void lerDonos(const char* nomeFicheiro, NodeDono** listaDonos) {
         if (strchr(linha, '\t') == NULL) {
             continue;
         }
-
         // --- Parsing da Linha ---
         char *token;
 
+        // <numContribuinte>
         token = strtok(linha, "\t");
         if (token == NULL) continue;
         numContribuinteLido = atoi(token);
 
+        // <nome>
         token = strtok(NULL, "\t");
         if (token == NULL) continue;
         strncpy(nomeLido, token, DONO_MAX_NOME - 1);
         nomeLido[DONO_MAX_NOME - 1] = '\0';
 
+        // <codPostal>
         token = strtok(NULL, "\t\n\r");
         if (token == NULL) continue;
         strncpy(codigoPostalLido, token, DONO_MAX_CODIGOPOSTAL - 1);
         codigoPostalLido[DONO_MAX_CODIGOPOSTAL - 1] = '\0';
 
-        // --- Armazenamento na Lista Ligada ---
+        // --- Inserção na Lista Ligada ---
 
         NodeDono* novoNode = (NodeDono*)malloc(sizeof(NodeDono));
         if (novoNode == NULL) {
             fprintf(stderr, "Erro Crítico: Falha ao alocar memória para novo Dono.\n");
-            fclose(fp); // Fecha o ficheiro
-
-            // *** LIBERTAÇÃO DE MEMÓRIA EM CASO DE ERRO ***
-            // Chama a função auxiliar para libertar os nós já criados nesta chamada
+            fclose(fp); 
             fprintf(stderr, " -> A libertar memória já alocada...\n");
-            libertarListaDonosParcial(listaDonos); // Passa o ponteiro para a cabeça da lista
-
-            return; // Sai da função após libertar a memória
+            libertarListaDonosParcial(listaDonos);
+            return; 
         }
 
-        // Preencher o Nó
         novoNode->dono.numeroContribuinte = numContribuinteLido;
         strcpy(novoNode->dono.nome, nomeLido);
         strcpy(novoNode->dono.codigoPostal, codigoPostalLido);
 
-        // (Opcional) Confirmação de dados no nó
-         printf("   -> Confirmado no nó: Contribuinte=%d, Nome='%s', CP='%s'\n",
-                novoNode->dono.numeroContribuinte,
-                novoNode->dono.nome,
-                novoNode->dono.codigoPostal);
-
-        // Ligar o Nó à Lista
         novoNode->next = *listaDonos;
         *listaDonos = novoNode;
 
-    } // Fim do while (fgets)
+    } 
 
-    // 4. Fechar o ficheiro
     fclose(fp);
     printf(">> Ficheiro %s lido e dados dos donos carregados para a lista ligada.\n", nomeFicheiro);
 }
@@ -205,7 +186,6 @@ void lerDonos(const char* nomeFicheiro, NodeDono** listaDonos) {
 void ordenar_por_nome(Dono *donos, int total){
     for(int i = 0; i < total - 1; i++){
         for(int j = 0; j < total - i - 1; j++){
-            // compara nome[j] com nome[j+1]:
             if ( strcmp(donos[j].nome, donos[j+1].nome) > 0 ) {
                 Dono tmp = donos[j];
                 donos[j] = donos[j + 1];
@@ -247,9 +227,6 @@ void ordenar_donos(const char *ficheiro) {
     libertarListaDonosParcial(&lista);
 }
 
-// --- Funções de Leitura Adicionais (Stubs - a implementar) ---
-// (O código das outras funções lerXxx permanece aqui como stubs)
-
 /*
  * Lê os dados dos carros do ficheiro especificado e preenche a lista ligada.
  */
@@ -258,7 +235,7 @@ void lerCarros(const char* nomeFicheiro, NodeCarro** listaCarros) {
     FILE *fp = fopen(nomeFicheiro, "r");
     if (!fp) {
         fprintf(stderr, "Erro ao abrir ficheiro: %s\n", nomeFicheiro);
-        *listaCarros = NULL; // Garante lista vazia em caso de erro
+        *listaCarros = NULL;
         return;
     }
 
@@ -281,7 +258,6 @@ void lerCarros(const char* nomeFicheiro, NodeCarro** listaCarros) {
 
         if (strchr(linha, '\t') == NULL) continue; // Ignora linhas sem tabulação
 
-        // --- Parsing da Linha ---
         char *token;
 
         // <matrícula>
@@ -317,9 +293,8 @@ void lerCarros(const char* nomeFicheiro, NodeCarro** listaCarros) {
         if (token == NULL) continue;
         idVeiculoLido = atoi(token);
 
-        // --- Armazenamento na Lista Ligada ---
+        // --- Inserção na Lista Ligada ---
 
-        // Alocar memória
         NodeCarro* novoNode = (NodeCarro*)malloc(sizeof(NodeCarro));
         if (novoNode == NULL) {
             fprintf(stderr, "Erro Crítico: Falha ao alocar memória para novo Carro.\n");
@@ -329,32 +304,26 @@ void lerCarros(const char* nomeFicheiro, NodeCarro** listaCarros) {
             return;
         }
 
-        // Preencher o Nó
-        strcpy(novoNode->carro.matricula, matriculaLida); // strcpy seguro após strncpy
-        strcpy(novoNode->carro.marca, marcaLida);         // strcpy seguro após strncpy
-        strcpy(novoNode->carro.modelo, modeloLido);       // strcpy seguro após strncpy
+        strcpy(novoNode->carro.matricula, matriculaLida);
+        strcpy(novoNode->carro.marca, marcaLida);
+        strcpy(novoNode->carro.modelo, modeloLido);  
         novoNode->carro.ano = anoLido;
         novoNode->carro.donoContribuinte = donoContribuinteLido;
         novoNode->carro.idVeiculo = idVeiculoLido;
 
-        // Confirmação (opcional)
-        printf("   -> Confirmado no nó Carro: %s, %s %s (%d), Dono:%d, ID:%d\n",
-                novoNode->carro.matricula, novoNode->carro.marca, novoNode->carro.modelo,
-                novoNode->carro.ano, novoNode->carro.donoContribuinte, novoNode->carro.idVeiculo);
-
-        // Ligar o Nó à Lista
         novoNode->next = *listaCarros;
         *listaCarros = novoNode;
 
-    } // Fim while
+    }
 
-    // 4. Fechar ficheiro
     fclose(fp);
     printf(">> Ficheiro %s lido e dados dos carros carregados.\n", nomeFicheiro);
 }
 
 
-// --- Implementação de lerSensores() ---
+/*
+ * Lê os dados dos sensores do ficheiro especificado e preenche a lista ligada.
+ */
 void lerSensores(const char* nomeFicheiro, NodeSensor** listaSensores) {
     FILE *fp = fopen(nomeFicheiro, "r");
     if (!fp) {
@@ -372,33 +341,34 @@ void lerSensores(const char* nomeFicheiro, NodeSensor** listaSensores) {
         if (!strchr(linha, '\t')) 
             continue;
 
-        // buffers temporários para separar campos
         int  idSensorLido;
         char designacaoLida[SENSOR_MAX_DESIGNACAO];
         char latitudeLida[SENSOR_MAX_LATITUDE];
         char longitudeLida[SENSOR_MAX_LONGITUDE];
 
-        // Parsing com strtok por '\t'
+        // <idSensor>
         char *token = strtok(linha, "\t");
         if (!token) continue;
         idSensorLido = atoi(token);
 
+        // <designacao>
         token = strtok(NULL, "\t");
         if (!token) continue;
         strncpy(designacaoLida, token, SENSOR_MAX_DESIGNACAO-1);
         designacaoLida[SENSOR_MAX_DESIGNACAO-1] = '\0';
 
+        // <latitude>
         token = strtok(NULL, "\t");
         if (!token) continue;
         strncpy(latitudeLida, token, SENSOR_MAX_LATITUDE-1);
         latitudeLida[SENSOR_MAX_LATITUDE-1] = '\0';
 
+        // <longitude>
         token = strtok(NULL, "\t\n\r");
         if (!token) continue;
         strncpy(longitudeLida, token, SENSOR_MAX_LONGITUDE-1);
         longitudeLida[SENSOR_MAX_LONGITUDE-1] = '\0';
 
-        // aloca e preenche o novo nó
         NodeSensor *novo = malloc(sizeof(NodeSensor));
         if (!novo) {
             fprintf(stderr, "Erro Crítico: falha malloc em lerSensores()\n");
@@ -406,19 +376,11 @@ void lerSensores(const char* nomeFicheiro, NodeSensor** listaSensores) {
             libertarListaSensoresParcial(listaSensores);
             return;
         }
-        novo->sensor.idSensor     = idSensorLido;
+        novo->sensor.idSensor = idSensorLido;
         strcpy(novo->sensor.designacao, designacaoLida);
         strcpy(novo->sensor.latitude,    latitudeLida);
         strcpy(novo->sensor.longitude,   longitudeLida);
 
-        // (opcional) confirmação no nó
-        printf("   -> Confirmado Sensor: ID=%d, %s, %s, %s\n",
-               novo->sensor.idSensor,
-               novo->sensor.designacao,
-               novo->sensor.latitude,
-               novo->sensor.longitude);
-
-        // insere no início da lista ligada
         novo->next = *listaSensores;
         *listaSensores = novo;
     }
@@ -457,7 +419,6 @@ void lerDistancias(const char* nomeFicheiro, NodeDistancia** listaDistancias) {
         if (!token) continue;
         float dist = atof(token);
 
-        // Aloca novo nó
         NodeDistancia *no = malloc(sizeof(NodeDistancia));
         if (!no) {
             fprintf(stderr, "Erro crítico: falha malloc em lerDistancias()\n");
@@ -466,16 +427,10 @@ void lerDistancias(const char* nomeFicheiro, NodeDistancia** listaDistancias) {
             return;
         }
 
-        // Preenche campos
         no->distancia.idSensor1 = id1;
         no->distancia.idSensor2 = id2;
         no->distancia.distancia  = dist;
 
-        // Confirmação (opcional)
-        printf("   -> Confirmado Distancia: %d->%d = %.3f km\n",
-               id1, id2, dist);
-
-        // Insere no início da lista
         no->next = *listaDistancias;
         *listaDistancias = no;
     }
