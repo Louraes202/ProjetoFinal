@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "operations.h"
 
 // --- Donos ---
@@ -231,23 +232,184 @@ void libertarListaPassagens(NodePassagem** lista) {
 typedef struct TreeNode {
     Passagem *p;
     struct TreeNode *l, *r;
-  } TreeNode;
+} TreeNode;
 
-  // --- Insert Tree  ---
-
-  /**
-   * @brief A função insere a nova passagem de forma ordenada na árvore binária,
+/**
+ * @brief A função insere a nova passagem de forma ordenada na árvore binária,
  * usando o id do veículo como chave de ordenação.
-   * 
-   * @param root 
-   * @param p 
-   */
-  void insertTree(TreeNode **root, Passagem *p) {
-    if (!*root) {
-      *root = malloc(sizeof **root);
-      (*root)->p = p; (*root)->l = (*root)->r = NULL;
-    } else if (p->idVeiculo < (*root)->p->idVeiculo)
-      insertTree(&(*root)->l, p);
-    else
-      insertTree(&(*root)->r, p);
-  }
+ * 
+ * @param root 
+ * @param p 
+ */
+void insertTree(TreeNode **root, Passagem *p) {
+if (!*root) {
+    *root = malloc(sizeof **root);
+    (*root)->p = p; (*root)->l = (*root)->r = NULL;
+} else if (p->idVeiculo < (*root)->p->idVeiculo)
+    insertTree(&(*root)->l, p);
+else
+    insertTree(&(*root)->r, p);
+}
+
+// Funções de registar
+
+/**
+ * @brief Função de registar dono
+ * 
+ * @param listaDonos
+ */
+void registarDono(NodeDono** listaDonos) {
+    int nif;
+    char nome[DONO_MAX_NOME];
+    char cp[DONO_MAX_CODIGOPOSTAL];
+    printf("NIF: ");         
+    scanf("%d", &nif);
+    printf("Nome: ");        
+    scanf(" %199[^\n]", nome);
+    printf("Código postal: "); 
+    scanf(" %9[^\n]", cp);
+
+    NodeDono *novo = malloc(sizeof(NodeDono));
+    if (!novo) {
+        printf("Erro ao alocar memória.\n");
+        return;
+    }
+
+    novo->dono.numeroContribuinte = nif;
+    strncpy(novo->dono.nome, nome, DONO_MAX_NOME);
+    strncpy(novo->dono.codigoPostal, cp, DONO_MAX_CODIGOPOSTAL);
+
+    novo->next = *listaDonos;
+    *listaDonos = novo;
+
+}
+
+/**
+ * @brief Função de registar carro
+ * 
+ * @param listaCarros
+ */
+void registarCarro(NodeCarro** listaCarros) {
+    char matricula[CARRO_MAX_MATRICULA];
+    char marca[CARRO_MAX_MARCA];
+    char modelo[CARRO_MAX_MODELO];
+    int ano, dono, id;
+
+    printf("Matrícula: ");
+    scanf(" %19[^\n]", matricula);
+    printf("Marca: ");
+    scanf(" %49[^\n]", marca);
+    printf("Modelo: ");
+    scanf(" %49[^\n]", modelo);
+    printf("Ano: ");
+    scanf("%d", &ano);
+    printf("Dono (NIF): ");
+    scanf("%d", &dono);
+    printf("ID veículo: ");
+    scanf("%d", &id);
+
+    NodeCarro *novo = malloc(sizeof(NodeCarro));
+    if (!novo) return;
+
+    strncpy(novo->carro.matricula, matricula, CARRO_MAX_MATRICULA);
+    strncpy(novo->carro.marca,     marca,     CARRO_MAX_MARCA);
+    strncpy(novo->carro.modelo,    modelo,    CARRO_MAX_MODELO);
+    novo->carro.ano = ano;
+    novo->carro.donoContribuinte = dono;
+    novo->carro.idVeiculo = id;
+
+    novo->next = *listaCarros;
+    *listaCarros = novo;
+}
+
+
+
+/**
+ * @brief Função de registar sensor
+ * 
+ * @param listaSensores
+ */
+
+void registarSensor(NodeSensor** listaSensores) {
+    int id;
+    char designacao[SENSOR_MAX_DESIGNACAO];
+    char lat[SENSOR_MAX_LATITUDE];
+    char lon[SENSOR_MAX_LONGITUDE];
+
+    printf("ID Sensor: ");
+    scanf("%d", &id);
+    printf("Designação: ");
+    scanf(" %99[^\n]", designacao);
+    printf("Latitude (texto): ");
+    scanf(" %49[^\n]", lat);
+    printf("Longitude (texto): ");
+    scanf(" %49[^\n]", lon);
+
+    NodeSensor *novo = malloc(sizeof(NodeSensor));
+    if (!novo) return;
+
+    novo->sensor.idSensor = id;
+    strncpy(novo->sensor.designacao, designacao, SENSOR_MAX_DESIGNACAO);
+    strncpy(novo->sensor.latitude, lat, SENSOR_MAX_LATITUDE);
+    strncpy(novo->sensor.longitude, lon, SENSOR_MAX_LONGITUDE);
+
+    novo->next = *listaSensores;
+    *listaSensores = novo;
+}
+
+/**
+ * @brief Função de registar distância
+ * 
+ * @param listaDistancias
+ */
+void registarDistancia(NodeDistancia** listaDistancias) {
+    int a, b;
+    float d;
+
+    printf("Sensor A (ID): ");
+    scanf("%d", &a);
+    printf("Sensor B (ID): ");
+    scanf("%d", &b);
+    printf("Distância (km): ");
+    scanf("%f", &d);
+
+    NodeDistancia *novo = malloc(sizeof(NodeDistancia));
+    if (!novo) return;
+
+    novo->distancia.idSensor1 = a;
+    novo->distancia.idSensor2 = b;
+    novo->distancia.distancia    = d;
+
+    novo->next = *listaDistancias;
+    *listaDistancias = novo;
+}
+
+/**
+ * @brief Função de registar passagem
+ * 
+ * @param listaPassagens
+ */
+void registarPassagem(NodePassagem** listaPassagens) {
+    int idS, idV, tipo;
+    char dataHora[PASSAGEM_MAX_DATAHORA];
+
+    printf("ID Sensor: ");
+    scanf("%d", &idS);
+    printf("ID Veículo: ");
+    scanf("%d", &idV);
+    printf("Data e hora (texto): ");
+    scanf(" %19[^\n]", dataHora);
+    printf("Tipo (0=entrada,1=saída): ");
+    scanf("%d", &tipo);
+
+    NodePassagem *novo = malloc(sizeof(NodePassagem));
+    if (!novo) return;
+
+    novo->passagem.idSensor    = idS;
+    novo->passagem.idVeiculo  = idV;
+    strncpy(novo->passagem.dataHora, dataHora, PASSAGEM_MAX_DATAHORA);
+    novo->passagem.tipoRegisto = tipo;
+
+    novo->next = *listaPassagens;
+    *listaPassagens = novo;
+}

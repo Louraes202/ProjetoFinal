@@ -17,4 +17,11 @@ void libertarListaSensores(NodeSensor** lista);
 void libertarListaDistancias(NodeDistancia** lista);
 void libertarListaPassagens(NodePassagem** lista);
 
+// funções de registo
+void registarDono(NodeDono** listaDonos);
+void registarCarro(NodeCarro** listaCarros);
+void registarSensor(NodeSensor** listaSensores);
+void registarDistancia(NodeDistancia** listaDistancias);
+void registarPassagem(NodePassagem** listaPassagens);
+
 #endif // OPERATIONS_H
