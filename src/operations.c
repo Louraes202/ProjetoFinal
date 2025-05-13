@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
+#include <ctype.h>
 #include "operations.h"
 
 // --- Donos ---
@@ -19,7 +21,7 @@ void imprimirListaDonos(NodeDono* lista) {
         return;
     }
     int i = 1;
-    for (NodeDono* p = lista; p; p = p->next, i++) {
+    for (NodeDono* p = lista; p; p = p->next, i++) { // ALTERAR: ordenar implicitamente por nome ou nif (parametro)
         printf("%2d) NIF=%d | Nome=\"%s\" | CP=%s\n",
                i,
                p->dono.numeroContribuinte,
@@ -412,4 +414,48 @@ void registarPassagem(NodePassagem** listaPassagens) {
 
     novo->next = *listaPassagens;
     *listaPassagens = novo;
+}
+
+/**
+ * @brief Verifica se um NIF (9 dígitos) é válido (apenas formato).
+ */
+bool validarNIF(int nif) {
+    return nif >= 100000000 && nif <= 999999999;
+}
+
+/**
+ * @brief Verifica se a matrícula portuguesa está num dos formatos válidos:
+ *   AA-00-00 ou 00-00-AA (2 letras/2 dígitos/2 dígitos).
+ */
+bool validarMatricula(const char *m) {
+    if (strlen(m) != 8 || m[2] != '-' || m[5] != '-') return false;
+    bool isLetDig = isalpha(m[0]) && isalpha(m[1]) &&
+                    isdigit(m[3]) && isdigit(m[4]) &&
+                    isdigit(m[6]) && isdigit(m[7]);
+    bool isDigLet = isdigit(m[0]) && isdigit(m[1]) &&
+                    isdigit(m[3]) && isdigit(m[4]) &&
+                    isalpha(m[6]) && isalpha(m[7]);
+    return isLetDig || isDigLet;
+}
+
+/**
+ * @brief Verifica se o código postal português tem o formato "XXXX-XXX"
+ *        onde X é dígito [0-9].
+ * @param cp string terminada em '\0'
+ * @return true se corresponder ao padrão, false caso contrário
+ */
+bool validarCodigoPostal(const char *cp) {
+    // comprimento fixo: 8 caracteres + '\0'
+    if (strlen(cp) != 8) return false;
+    // posições 0..3 devem ser dígitos
+    for (int i = 0; i < 4; i++)
+        if (!isdigit((unsigned char)cp[i]))
+            return false;
+    // posição 4 deve ser hífen
+    if (cp[4] != '-') return false;
+    // posições 5..7 devem ser dígitos
+    for (int i = 5; i < 8; i++)
+        if (!isdigit((unsigned char)cp[i]))
+            return false;
+    return true;
 }

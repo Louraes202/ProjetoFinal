@@ -2,6 +2,7 @@
 #define OPERATIONS_H
 
 #include "data.h"
+#include <stdbool.h>
 
 // imprime listas (já existentes)
 void imprimirListaDonos(NodeDono* lista);
@@ -23,5 +24,9 @@ void registarCarro(NodeCarro** listaCarros);
 void registarSensor(NodeSensor** listaSensores);
 void registarDistancia(NodeDistancia** listaDistancias);
 void registarPassagem(NodePassagem** listaPassagens);
+
+bool validarNIF(int nif);
+bool validarMatricula(const char *m);
+bool validarCodigoPostal(const char *cp);
 
 #endif // OPERATIONS_H
