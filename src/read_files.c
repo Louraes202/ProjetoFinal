@@ -542,3 +542,4 @@ void lerPassagens(const char* nomeFicheiro, NodePassagem** listaPassagens) {
     fclose(fp);
     printf("Lidas %zu passagens (pool de %zu nós).\n", poolPos, poolSize);
 }
+

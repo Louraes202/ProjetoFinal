@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h> 
+#include <locale.h>
 #include "data.h"
 #include "read_files.h"
 #include "operations.h"
@@ -12,6 +13,13 @@
 
 
 int main(int argc, char *argv[]) {
+
+  setlocale(LC_ALL, "pt_PT.UTF-8");
+
+  #ifdef _WIN32
+      SetConsoleOutputCP(CP_UTF8);
+  #endif
+
   // Variáveis do main
   NodePassagem* lista = NULL;
   const char *ficheiro;
@@ -37,59 +45,57 @@ int main(int argc, char *argv[]) {
   }
 
   // Core
-    NodeDono*      donos      = NULL;
-    NodeCarro*     carros     = NULL;
-    NodeSensor*    sensores   = NULL;
-    NodeDistancia* distancias = NULL;
-    NodePassagem*  passagens  = NULL;
+  NodeDono*      donos      = NULL;
+  NodeCarro*     carros     = NULL;
+  NodeSensor*    sensores   = NULL;
+  NodeDistancia* distancias = NULL;
+  NodePassagem*  passagens  = NULL;
 
-    printf("=== Teste de registos ===\n\n");
+  printf("=== Teste de registos ===\n\n");
 
-    // 1) Donos
-    printf("-- Registar 2 donos --\n");
-    registarDono(&donos);
-    registarDono(&donos);
-    printf("\nLista de Donos:\n");
-    imprimirListaDonos(donos);
+  // 1) Donos
+  printf("-- Registar 2 donos --\n");
+  registarDono(&donos);
+  registarDono(&donos);
+  printf("\nLista de Donos:\n");
+  imprimirListaDonos(donos);
 
-    // 2) Carros
-    printf("\n-- Registar 2 carros --\n");
-    registarCarro(&carros);
-    registarCarro(&carros);
-    printf("\nLista de Carros:\n");
-    imprimirListaCarros(carros);
+  // 2) Carros
+  printf("\n-- Registar 2 carros --\n");
+  registarCarro(&carros);
+  registarCarro(&carros);
+  printf("\nLista de Carros:\n");
+  imprimirListaCarros(carros);
 
-    // 3) Sensores
-    printf("\n-- Registar 2 sensores --\n");
-    registarSensor(&sensores);
-    registarSensor(&sensores);
-    printf("\nLista de Sensores:\n");
-    imprimirListaSensores(sensores);
+  // 3) Sensores
+  printf("\n-- Registar 2 sensores --\n");
+  registarSensor(&sensores);
+  registarSensor(&sensores);
+  printf("\nLista de Sensores:\n");
+  imprimirListaSensores(sensores);
 
-    // 4) Distâncias
-    printf("\n-- Registar 2 distâncias --\n");
-    registarDistancia(&distancias);
-    registarDistancia(&distancias);
-    printf("\nLista de Distâncias:\n");
-    imprimirListaDistancias(distancias);
+  // 4) Distâncias
+  printf("\n-- Registar 2 distâncias --\n");
+  registarDistancia(&distancias);
+  registarDistancia(&distancias);
+  printf("\nLista de Distâncias:\n");
+  imprimirListaDistancias(distancias);
 
-    // 5) Passagens
-    printf("\n-- Registar 2 passagens --\n");
-    registarPassagem(&passagens);
-    registarPassagem(&passagens);
-    printf("\nLista de Passagens:\n");
-    imprimirListaPassagens(passagens);
+  // 5) Passagens
+  printf("\n-- Registar 2 passagens --\n");
+  registarPassagem(&passagens);
+  registarPassagem(&passagens);
+  printf("\nLista de Passagens:\n");
+  imprimirListaPassagens(passagens);
 
-    // libertar tudo
-    printf("\n=== Libertar memória ===\n");
-    libertarListaDonos(&donos);
-    libertarListaCarros(&carros);
-    libertarListaSensores(&sensores);
-    libertarListaDistancias(&distancias);
-    libertarListaPassagens(&passagens);
+  // libertar tudo
+  printf("\n=== Libertar memória ===\n");
+  libertarListaDonos(&donos);
+  libertarListaCarros(&carros);
+  libertarListaSensores(&sensores);
+  libertarListaDistancias(&distancias);
+  libertarListaPassagens(&passagens);
 
-    return 0;
-
-  libertarListaPassagens(&lista);
   return 0;
+
 }
