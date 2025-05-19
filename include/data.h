@@ -124,4 +124,11 @@ typedef struct kmVeiculo {
     float km;
 } KmVeiculo;
 
+// Estrutura para armazenar o total de quilómetros por marca
+typedef struct kmMarca {
+    char marca[CARRO_MAX_MARCA];
+    double km;
+} KmMarca;
+
 #endif /* DATA_STRUCTURES_H */
+

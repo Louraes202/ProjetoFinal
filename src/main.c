@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
       // modo normal: usa o ficheiro da pasta de dados
       ficheiro = "passagem.txt";
   }
-
+  
   // Core
   NodeDono*      donos      = NULL;
   NodeCarro*     carros     = NULL;
@@ -51,21 +51,14 @@ int main(int argc, char *argv[]) {
   NodeDistancia* distancias = NULL;
   NodePassagem*  passagens  = NULL;
 
-  printf("=== Teste de registos ===\n\n");
-
   lerDistancias("Dados-Portagens-Trab-Pratico/distancias.txt", &distancias);
   lerPassagens(ficheiro, &passagens);
   lerCarros("Dados-Portagens-Trab-Pratico/carros.txt", &carros);
   lerDonos("Dados-Portagens-Trab-Pratico/donos.txt", &donos);
   lerSensores("Dados-Portagens-Trab-Pratico/sensores.txt", &sensores);
 
-  // Definir intervalo de tempo para o ranking
-  time_t inicio = parseTimestamp("31-01-2006 00:00:00");
-  time_t fim = parseTimestamp("31-12-2006 23:59:59");
-
-  // Testar a função rankingVeiculos
-  printf("\n=== Teste de Ranking de Circulação ===\n");
-  rankingVeiculos(passagens, distancias, inicio, fim);
+  // Testar calcularMemoriaLista para cada estrutura
+  printf("\nMemória total ocupada: %zu bytes\n", calcularMemoriaTotal(donos, carros, sensores, distancias, passagens));
 
   // Libertar memória
   libertarListaPassagens(&passagens);
@@ -73,7 +66,6 @@ int main(int argc, char *argv[]) {
   libertarListaCarros(&carros);
   libertarListaSensores(&sensores);
   libertarListaDonos(&donos);
-
 
   return 0;
 

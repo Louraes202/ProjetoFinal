@@ -18,6 +18,9 @@ void libertarListaSensores(NodeSensor** lista);
 void libertarListaDistancias(NodeDistancia** lista);
 void libertarListaPassagens(NodePassagem** lista);
 
+// funçoes de memoria
+size_t calcularMemoriaTotal(NodeDono* listaDonos, NodeCarro* listaCarros, NodeSensor* listaSensores, NodeDistancia* listaDistancias, NodePassagem* listaPassagens);
+
 // funções de registo
 void registarDono(NodeDono** listaDonos);
 void registarCarro(NodeCarro** listaCarros);
@@ -34,5 +37,8 @@ time_t parseTimestamp(const char *dataHora);
 double obterDistancia(NodeDistancia* lista, int id1, int id2);
 int cmpVeiculoRanking(const void *a, const void *b);
 void rankingVeiculos(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, time_t inicio, time_t fim);
+
+int cmpMarcaRanking(const void *a, const void *b);
+void rankingPorMarca(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, NodeCarro* listaCarros, time_t inicio, time_t fim);
 
 #endif // OPERATIONS_H

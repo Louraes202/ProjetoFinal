@@ -213,7 +213,40 @@ void libertarListaDistancias(NodeDistancia** lista) {
     printf("\nMemória de %d nós Distancia libertada.\n", cont);
 }
 
-// --- libertar Passagens ---
+
+// Funçao para determinar a memoria ocupada por todas as estruturas do programa
+size_t calcularMemoriaTotal(NodeDono* listaDonos, NodeCarro* listaCarros, NodeSensor* listaSensores, NodeDistancia* listaDistancias, NodePassagem* listaPassagens) {
+    size_t memoriaTotal = 0;
+    for (NodeDono* p = listaDonos; p; p = p->next) {
+        memoriaTotal += sizeof(NodeDono);
+    }
+
+    // Calcular memória ocupada pela lista de carros
+    for (NodeCarro* p = listaCarros; p; p = p->next) {
+        memoriaTotal += sizeof(NodeCarro);
+    }
+
+    // Calcular memória ocupada pela lista de sensores
+    for (NodeSensor* p = listaSensores; p; p = p->next) {
+        memoriaTotal += sizeof(NodeSensor);
+    }
+
+    // Calcular memória ocupada pela lista de distâncias
+    for (NodeDistancia* p = listaDistancias; p; p = p->next) {
+        memoriaTotal += sizeof(NodeDistancia);
+    }
+
+    // Calcular memória ocupada pela lista de passagens
+    for (NodePassagem* p = listaPassagens; p; p = p->next) {
+        memoriaTotal += sizeof(NodePassagem);
+    }
+
+    return memoriaTotal;
+}
+
+
+
+/**
 
 /**
  * @brief Cada nó armazena um ponteiro para uma passagem e ponteiros para os nós esquerdo e direito.
@@ -478,6 +511,14 @@ int parseTimestampCustom(const char *dataHora, struct tm *tm) {
     tm->tm_mon -= 1;  // Meses vão de 0 a 11
     tm->tm_year -= 1900; // Anos são contados a partir de 1900
 
+    // Validações adicionais para garantir que o timestamp é válido
+    if (tm->tm_year < 0 || tm->tm_mon < 0 || tm->tm_mon > 11 ||
+        tm->tm_mday < 1 || tm->tm_mday > 31 || tm->tm_hour < 0 ||
+        tm->tm_hour > 23 || tm->tm_min < 0 || tm->tm_min > 59 ||
+        tm->tm_sec < 0 || tm->tm_sec > 59) {
+        return 0; // Retorna 0 se os valores estiverem fora dos limites
+    }
+
     return 1; // Retorna 1 se a análise for bem-sucedida
 }
 
@@ -626,3 +667,75 @@ void rankingVeiculos(NodePassagem* listaPassagens, NodeDistancia* listaDistancia
 
     free(ranking);
 }
+
+
+// Função de comparação para qsort (ordem decrescente por quilómetros)
+int cmpMarcaRanking(const void *a, const void *b) {
+    double diff = ((KmMarca*)b)->km - ((KmMarca*)a)->km;
+    return (diff > 0) - (diff < 0);
+}
+
+// Função para calcular o ranking por marca
+void rankingPorMarca(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, NodeCarro* listaCarros, time_t inicio, time_t fim) {
+    int maxMarcas = 100; // Ajustar conforme necessário
+    KmMarca *ranking = calloc(maxMarcas, sizeof(KmMarca));
+    int nMarcas = 0;
+
+    // 1. Processar passagens e calcular distâncias por marca
+    for (NodePassagem* p = listaPassagens; p; p = p->next) {
+        time_t t = parseTimestamp(p->passagem.dataHora);
+        if (t < inicio || t > fim) continue;
+
+        int idV = p->passagem.idVeiculo;
+        int idS = p->passagem.idSensor;
+        int idS_ant = -1;
+
+        NodePassagem* ant = p->next;
+        while (ant) {
+            if (ant->passagem.idVeiculo == idV) {
+                idS_ant = ant->passagem.idSensor;
+                break;
+            }
+            ant = ant->next;
+        }
+        if (idS_ant == -1) continue;
+
+        // Encontrar a marca do veículo
+        char marca[CARRO_MAX_MARCA] = "";
+        for (NodeCarro* c = listaCarros; c; c = c->next) {
+            if (c->carro.idVeiculo == idV) {
+                strncpy(marca, c->carro.marca, CARRO_MAX_MARCA);
+                break;
+            }
+        }
+        if (strlen(marca) == 0) continue;
+
+        // Verificar se a marca já está no ranking
+        int idx = -1;
+        for (int i = 0; i < nMarcas; i++) {
+            if (strcmp(ranking[i].marca, marca) == 0) {
+                idx = i;
+                break;
+            }
+        }
+        if (idx == -1) {
+            idx = nMarcas++;
+            strncpy(ranking[idx].marca, marca, CARRO_MAX_MARCA);
+            ranking[idx].km = 0.0;
+        }
+
+        double dist = obterDistancia(listaDistancias, idS_ant, idS);
+        ranking[idx].km += dist;
+    }
+
+    qsort(ranking, nMarcas, sizeof(KmMarca), cmpMarcaRanking);
+
+    // 2. Exibir o ranking
+    printf("\n=== Ranking por Marca ===\n");
+    for (int i = 0; i < nMarcas; i++) {
+        printf("%2d) Marca: %s | Total de km: %.2f\n", i + 1, ranking[i].marca, ranking[i].km);
+    }
+
+    free(ranking);
+}
+
