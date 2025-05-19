@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
   lerSensores("Dados-Portagens-Trab-Pratico/sensores.txt", &sensores);
 
   // Definir intervalo de tempo para o ranking
-  time_t inicio = parseTimestamp("31-13-2006 00:00:00");
+  time_t inicio = parseTimestamp("31-01-2006 00:00:00");
   time_t fim = parseTimestamp("31-12-2006 23:59:59");
 
   // Testar a função rankingVeiculos

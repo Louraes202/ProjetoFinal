@@ -511,14 +511,13 @@ int cmpVeiculoRanking(const void *a, const void *b) {
     return (diff > 0) - (diff < 0);
 }
 
-// Esboço da função rankingVeiculos
+// Esboço da função rankingVeiculos com paginação e busca por ID
 void rankingVeiculos(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, time_t inicio, time_t fim) {
-    // 1. Descobrir quantos veículos distintos existem (ou usar um valor máximo conhecido)
     int maxVeiculos = 40000; // Ajustar conforme necessário
     KmVeiculo *ranking = calloc(maxVeiculos, sizeof(KmVeiculo));
     int nVeiculos = 0;
 
-    // 2. Percorrer todas as passagens
+    // 1. Processar passagens e calcular distâncias
     for (NodePassagem* p = listaPassagens; p; p = p->next) {
         time_t t = parseTimestamp(p->passagem.dataHora);
         if (t < inicio || t > fim) continue;
@@ -527,7 +526,6 @@ void rankingVeiculos(NodePassagem* listaPassagens, NodeDistancia* listaDistancia
         int idS = p->passagem.idSensor;
         int idS_ant = -1;
 
-        // Encontrar passagem anterior do mesmo veículo (para calcular distância)
         NodePassagem* ant = p->next;
         while (ant) {
             if (ant->passagem.idVeiculo == idV) {
@@ -536,9 +534,8 @@ void rankingVeiculos(NodePassagem* listaPassagens, NodeDistancia* listaDistancia
             }
             ant = ant->next;
         }
-        if (idS_ant == -1) continue; // Não há passagem anterior
+        if (idS_ant == -1) continue;
 
-        // Verifica se já existe no ranking
         int idx = -1;
         for (int i = 0; i < nVeiculos; i++) {
             if (ranking[i].idVeiculo == idV) {
@@ -546,33 +543,86 @@ void rankingVeiculos(NodePassagem* listaPassagens, NodeDistancia* listaDistancia
                 break;
             }
         }
-        if (idx == -1) { // Novo veículo
+        if (idx == -1) {
             idx = nVeiculos++;
             ranking[idx].idVeiculo = idV;
             ranking[idx].km = 0.0;
         }
 
-        // 3. Acumular a distância
         double dist = obterDistancia(listaDistancias, idS_ant, idS);
         ranking[idx].km += dist;
     }
 
-    // 4. Ordenar por km (decrescente)
     qsort(ranking, nVeiculos, sizeof(KmVeiculo), cmpVeiculoRanking);
 
-    // 5. Imprimir o ranking
-    printf("=== Ranking de circulação ===\n");
-    for (int i = 0; i < nVeiculos; i++) {
-        printf("%2d) Veículo %d: %.2f km\n", i+1, ranking[i].idVeiculo, ranking[i].km);
-    }
+    // 2. Paginação e busca
+    int pageSize = 10;
+    int currentPage = 0;
+    char opcao;
 
-    // 6. Imprimir mensagem final com data e hora
-    struct tm *tmInicio = localtime(&inicio);
-    struct tm *tmFim = localtime(&fim);
-    char inicioStr[20], fimStr[20];
-    strftime(inicioStr, sizeof(inicioStr), "%d-%m-%Y %H:%M:%S", tmInicio);
-    strftime(fimStr, sizeof(fimStr), "%d-%m-%Y %H:%M:%S", tmFim);
-    printf("Passaram %d veículos na estrada entre %s e %s\n", nVeiculos, inicioStr, fimStr);
+    do {
+        printf("\n=== Ranking de circulação (Página %d) ===\n", currentPage + 1);
+        int start = currentPage * pageSize;
+        int end = start + pageSize;
+        if (end > nVeiculos) end = nVeiculos;
+
+        for (int i = start; i < end; i++) {
+            printf("%2d) Veículo %d: %.2f km\n", i + 1, ranking[i].idVeiculo, ranking[i].km);
+        }
+
+        struct tm *tmInicio = localtime(&inicio);
+        struct tm *tmFim = localtime(&fim);
+        char inicioStr[20], fimStr[20];
+        strftime(inicioStr, sizeof(inicioStr), "%d-%m-%Y %H:%M:%S", tmInicio);
+        strftime(fimStr, sizeof(fimStr), "%d-%m-%Y %H:%M:%S", tmFim);
+        printf("\nPassaram %d veículos na estrada entre %s e %s\n", nVeiculos, inicioStr, fimStr);
+
+        printf("\nOpções:\n");
+        printf("n - Próxima página\n");
+        printf("p - Página anterior\n");
+        printf("b - Procurar veículo por ID\n");
+        printf("t - Alterar número de veículos por página (atual: %d)\n", pageSize);
+        printf("s - Sair\n");
+        printf("Escolha: ");
+        scanf(" %c", &opcao);
+
+        if (opcao == 'n' && end < nVeiculos) {
+            currentPage++;
+        } else if (opcao == 'p' && currentPage > 0) {
+            currentPage--;
+        } else if (opcao == 'b') {
+            int idBusca;
+            printf("Digite o ID do veículo: ");
+            scanf("%d", &idBusca);
+            int encontrado = 0;
+            for (int i = 0; i < nVeiculos; i++) {
+                if (ranking[i].idVeiculo == idBusca) {
+                    printf("Veículo %d está na posição %d com %.2f km\n", idBusca, i + 1, ranking[i].km);
+                    encontrado = 1;
+                    break;
+                }
+            }
+            if (!encontrado) {
+                printf("Veículo com ID %d não encontrado no ranking.\n", idBusca);
+            }
+            printf("Pressione Enter para continuar...");
+            while (getchar() != '\n'); // Limpa o buffer
+            getchar(); // Aguarda o Enter
+        } else if (opcao == 't') {
+            printf("Digite o novo número de veículos por página: ");
+            scanf("%d", &pageSize);
+            if (pageSize <= 0) {
+                printf("Número inválido. Mantendo o valor anterior.\n");
+                pageSize = 10;
+            } else if (pageSize > nVeiculos) {
+                printf("O número inserido (%d) é superior ao número de veículos que passaram (%d).\n", pageSize, nVeiculos);
+                pageSize = nVeiculos;
+            }
+            currentPage = 0; // Reinicia na primeira página
+        } else if (opcao != 's') {
+            printf("Opção inválida.\n");
+        }
+    } while (opcao != 's');
 
     free(ranking);
 }
