@@ -29,4 +29,10 @@ bool validarNIF(int nif);
 bool validarMatricula(const char *m);
 bool validarCodigoPostal(const char *cp);
 
+int parseTimestampCustom(const char *dataHora, struct tm *tm);
+time_t parseTimestamp(const char *dataHora);
+double obterDistancia(NodeDistancia* lista, int id1, int id2);
+int cmpVeiculoRanking(const void *a, const void *b);
+void rankingVeiculos(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, time_t inicio, time_t fim);
+
 #endif // OPERATIONS_H

@@ -53,48 +53,27 @@ int main(int argc, char *argv[]) {
 
   printf("=== Teste de registos ===\n\n");
 
-  // 1) Donos
-  printf("-- Registar 2 donos --\n");
-  registarDono(&donos);
-  registarDono(&donos);
-  printf("\nLista de Donos:\n");
-  imprimirListaDonos(donos);
+  lerDistancias("Dados-Portagens-Trab-Pratico/distancias.txt", &distancias);
+  lerPassagens(ficheiro, &passagens);
+  lerCarros("Dados-Portagens-Trab-Pratico/carros.txt", &carros);
+  lerDonos("Dados-Portagens-Trab-Pratico/donos.txt", &donos);
+  lerSensores("Dados-Portagens-Trab-Pratico/sensores.txt", &sensores);
 
-  // 2) Carros
-  printf("\n-- Registar 2 carros --\n");
-  registarCarro(&carros);
-  registarCarro(&carros);
-  printf("\nLista de Carros:\n");
-  imprimirListaCarros(carros);
+  // Definir intervalo de tempo para o ranking
+  time_t inicio = parseTimestamp("31-13-2006 00:00:00");
+  time_t fim = parseTimestamp("31-12-2006 23:59:59");
 
-  // 3) Sensores
-  printf("\n-- Registar 2 sensores --\n");
-  registarSensor(&sensores);
-  registarSensor(&sensores);
-  printf("\nLista de Sensores:\n");
-  imprimirListaSensores(sensores);
+  // Testar a função rankingVeiculos
+  printf("\n=== Teste de Ranking de Circulação ===\n");
+  rankingVeiculos(passagens, distancias, inicio, fim);
 
-  // 4) Distâncias
-  printf("\n-- Registar 2 distâncias --\n");
-  registarDistancia(&distancias);
-  registarDistancia(&distancias);
-  printf("\nLista de Distâncias:\n");
-  imprimirListaDistancias(distancias);
-
-  // 5) Passagens
-  printf("\n-- Registar 2 passagens --\n");
-  registarPassagem(&passagens);
-  registarPassagem(&passagens);
-  printf("\nLista de Passagens:\n");
-  imprimirListaPassagens(passagens);
-
-  // libertar tudo
-  printf("\n=== Libertar memória ===\n");
-  libertarListaDonos(&donos);
+  // Libertar memória
+  libertarListaPassagens(&passagens);
+  libertarListaDistancias(&distancias);
   libertarListaCarros(&carros);
   libertarListaSensores(&sensores);
-  libertarListaDistancias(&distancias);
-  libertarListaPassagens(&passagens);
+  libertarListaDonos(&donos);
+
 
   return 0;
 

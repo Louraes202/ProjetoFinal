@@ -4,7 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+
 #include <ctype.h>
+#include <time.h>
 #include "operations.h"
 
 // --- Donos ---
@@ -458,4 +460,119 @@ bool validarCodigoPostal(const char *cp) {
         if (!isdigit((unsigned char)cp[i]))
             return false;
     return true;
+}
+
+// Função personalizada para analisar data e hora no formato "dd-mm-yyyy HH:MM:SS"
+int parseTimestampCustom(const char *dataHora, struct tm *tm) {
+    // Inicializa a estrutura tm com zeros
+    memset(tm, 0, sizeof(struct tm));
+
+    // Analisa a string no formato "dd-mm-yyyy HH:MM:SS"
+    if (sscanf(dataHora, "%d-%d-%d %d:%d:%d",
+               &tm->tm_mday, &tm->tm_mon, &tm->tm_year,
+               &tm->tm_hour, &tm->tm_min, &tm->tm_sec) != 6) {
+        return 0; // Retorna 0 se a análise falhar
+    }
+
+    // Ajusta os valores para o formato esperado pela struct tm
+    tm->tm_mon -= 1;  // Meses vão de 0 a 11
+    tm->tm_year -= 1900; // Anos são contados a partir de 1900
+
+    return 1; // Retorna 1 se a análise for bem-sucedida
+}
+
+time_t parseTimestamp(const char *dataHora) {
+    struct tm tm;
+    memset(&tm, 0, sizeof(struct tm));
+
+    // Use a função personalizada para analisar a data e hora
+    if (!parseTimestampCustom(dataHora, &tm)) {
+        fprintf(stderr, "Erro: formato de data/hora inválido: %s\n", dataHora);
+        return -1; // Retorna -1 em caso de erro
+    }
+
+    return mktime(&tm); // Converte struct tm para time_t
+}
+
+// Função para obter a distância entre dois sensores
+double obterDistancia(NodeDistancia* lista, int id1, int id2) {
+    for (NodeDistancia* d = lista; d; d = d->next) {
+        if ((d->distancia.idSensor1 == id1 && d->distancia.idSensor2 == id2) ||
+            (d->distancia.idSensor1 == id2 && d->distancia.idSensor2 == id1)) {
+            return d->distancia.distancia;
+        }
+    }
+    return 0.0;
+}
+
+// Função de comparação para qsort (ordem decrescente)
+int cmpVeiculoRanking(const void *a, const void *b) {
+    double diff = ((KmVeiculo*)b)->km - ((KmVeiculo*)a)->km;
+    return (diff > 0) - (diff < 0);
+}
+
+// Esboço da função rankingVeiculos
+void rankingVeiculos(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, time_t inicio, time_t fim) {
+    // 1. Descobrir quantos veículos distintos existem (ou usar um valor máximo conhecido)
+    int maxVeiculos = 40000; // Ajustar conforme necessário
+    KmVeiculo *ranking = calloc(maxVeiculos, sizeof(KmVeiculo));
+    int nVeiculos = 0;
+
+    // 2. Percorrer todas as passagens
+    for (NodePassagem* p = listaPassagens; p; p = p->next) {
+        time_t t = parseTimestamp(p->passagem.dataHora);
+        if (t < inicio || t > fim) continue;
+
+        int idV = p->passagem.idVeiculo;
+        int idS = p->passagem.idSensor;
+        int idS_ant = -1;
+
+        // Encontrar passagem anterior do mesmo veículo (para calcular distância)
+        NodePassagem* ant = p->next;
+        while (ant) {
+            if (ant->passagem.idVeiculo == idV) {
+                idS_ant = ant->passagem.idSensor;
+                break;
+            }
+            ant = ant->next;
+        }
+        if (idS_ant == -1) continue; // Não há passagem anterior
+
+        // Verifica se já existe no ranking
+        int idx = -1;
+        for (int i = 0; i < nVeiculos; i++) {
+            if (ranking[i].idVeiculo == idV) {
+                idx = i;
+                break;
+            }
+        }
+        if (idx == -1) { // Novo veículo
+            idx = nVeiculos++;
+            ranking[idx].idVeiculo = idV;
+            ranking[idx].km = 0.0;
+        }
+
+        // 3. Acumular a distância
+        double dist = obterDistancia(listaDistancias, idS_ant, idS);
+        ranking[idx].km += dist;
+    }
+
+    // 4. Ordenar por km (decrescente)
+    qsort(ranking, nVeiculos, sizeof(KmVeiculo), cmpVeiculoRanking);
+
+    // 5. Imprimir o ranking
+    printf("=== Ranking de circulação ===\n");
+    for (int i = 0; i < nVeiculos; i++) {
+        printf("%2d) Veículo %d: %.2f km\n", i+1, ranking[i].idVeiculo, ranking[i].km);
+    }
+
+    // 6. Imprimir mensagem final com data e hora
+    struct tm *tmInicio = localtime(&inicio);
+    struct tm *tmFim = localtime(&fim);
+    char inicioStr[20], fimStr[20];
+    strftime(inicioStr, sizeof(inicioStr), "%d-%m-%Y %H:%M:%S", tmInicio);
+    strftime(fimStr, sizeof(fimStr), "%d-%m-%Y %H:%M:%S", tmFim);
+    printf("Passaram %d veículos na estrada entre %s e %s\n", nVeiculos, inicioStr, fimStr);
+
+    free(ranking);
 }

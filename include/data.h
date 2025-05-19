@@ -119,4 +119,9 @@ typedef struct nodePassagem {
     struct nodePassagem* next;
 } NodePassagem;
 
+typedef struct kmVeiculo {
+    int  idVeiculo;
+    float km;
+} KmVeiculo;
+
 #endif /* DATA_STRUCTURES_H */
