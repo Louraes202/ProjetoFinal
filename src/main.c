@@ -57,8 +57,15 @@ int main(int argc, char *argv[]) {
   lerDonos("Dados-Portagens-Trab-Pratico/donos.txt", &donos);
   lerSensores("Dados-Portagens-Trab-Pratico/sensores.txt", &sensores);
 
-  // Testar calcularMemoriaLista para cada estrutura
-  printf("\nMemória total ocupada: %zu bytes\n", calcularMemoriaTotal(donos, carros, sensores, distancias, passagens));
+  // Testar a função listarInfracoes
+  printf("\n=== Teste de Listar Infrações ===\n");
+
+  // Definir intervalo de tempo para o teste
+  time_t inicio = parseTimestamp("31-12-2004 00:00:00");
+  time_t fim = parseTimestamp("31-12-2004 23:59:59");
+
+  // Chamar a função listarInfracoes
+  listarInfracoes(passagens, distancias, carros, inicio, fim);
 
   // Libertar memória
   libertarListaPassagens(&passagens);

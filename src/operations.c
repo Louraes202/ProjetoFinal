@@ -552,6 +552,160 @@ int cmpVeiculoRanking(const void *a, const void *b) {
     return (diff > 0) - (diff < 0);
 }
 
+// Definição da struct Infracao
+typedef struct {
+    char matricula[CARRO_MAX_MATRICULA];
+    double velocidadeMedia;
+} Infracao;
+
+
+// Função para liberar a árvore binária
+void liberarArvore(TreeNodeInfracao *root) {
+    if (!root) return;
+    liberarArvore(root->left);
+    liberarArvore(root->right);
+    free(root);
+}
+
+// Função para inserir na árvore binária
+void inserirInfracao(TreeNodeInfracao **root, const char *matricula, double velocidadeMedia) {
+    if (!*root) {
+        *root = malloc(sizeof(TreeNodeInfracao));
+        strncpy((*root)->matricula, matricula, CARRO_MAX_MATRICULA);
+        (*root)->velocidadeMedia = velocidadeMedia;
+        (*root)->left = (*root)->right = NULL;
+    } else if (velocidadeMedia > (*root)->velocidadeMedia) {
+        inserirInfracao(&(*root)->left, matricula, velocidadeMedia);
+    } else {
+        inserirInfracao(&(*root)->right, matricula, velocidadeMedia);
+    }
+}
+
+    // Função para percorrer a árvore binária em ordem decrescente
+void percorrerArvore(TreeNodeInfracao *root, Infracao *infracoes, int *index) {
+    if (!root) return;
+    percorrerArvore(root->left, infracoes, index);
+    strncpy(infracoes[*index].matricula, root->matricula, CARRO_MAX_MATRICULA);
+    infracoes[*index].velocidadeMedia = root->velocidadeMedia;
+    (*index)++;
+    percorrerArvore(root->right, infracoes, index);
+}
+
+// Função para listar infrações de velocidade com menu de páginas (otimizada com árvore binária)
+// A função está a funcionar corretamente, mas pode ser melhorada a nível de eficiência
+void listarInfracoes(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, NodeCarro* listaCarros, time_t inicio, time_t fim) {
+
+    TreeNodeInfracao *root = NULL;
+
+    // 1. Processar passagens e calcular infrações
+    printf("A carregar");
+    int loadingDots = 0;
+    for (NodePassagem* p = listaPassagens; p; p = p->next) {
+        // Atualizar mensagem de carregamento
+        printf("\rA carregar%s", (loadingDots++ % 4 == 0) ? "." : (loadingDots % 4 == 1) ? ".." : (loadingDots % 4 == 2) ? "..." : "....");
+        fflush(stdout);
+
+        time_t t = parseTimestamp(p->passagem.dataHora);
+        if (t < inicio || t > fim) continue;
+
+        int idV = p->passagem.idVeiculo;
+        int idS = p->passagem.idSensor;
+        int idS_ant = -1;
+        time_t t_ant = -1;
+
+        NodePassagem* ant = p->next;
+        while (ant) {
+            if (ant->passagem.idVeiculo == idV) {
+                idS_ant = ant->passagem.idSensor;
+                t_ant = parseTimestamp(ant->passagem.dataHora);
+                break;
+            }
+            ant = ant->next;
+        }
+        if (idS_ant == -1 || t_ant == -1) continue;
+
+        double dist = obterDistancia(listaDistancias, idS_ant, idS);
+        double tempoHoras = difftime(t, t_ant) / 3600.0; // Converter tempo para horas
+        if (tempoHoras <= 0) continue;
+
+        double velocidadeMedia = dist / tempoHoras;
+        if (velocidadeMedia > 120.0) {
+            char matricula[CARRO_MAX_MATRICULA] = "";
+            for (NodeCarro* c = listaCarros; c; c = c->next) {
+                if (c->carro.idVeiculo == idV) {
+                    strncpy(matricula, c->carro.matricula, CARRO_MAX_MATRICULA);
+                    break;
+                }
+            }
+            if (strlen(matricula) > 0) {
+                inserirInfracao(&root, matricula, velocidadeMedia);
+            }
+        }
+    }
+    printf("\n");
+
+    // 2. Transferir dados da árvore para um array
+    int maxInfracoes = 1000; // Ajustar conforme necessário
+    Infracao *infracoes = calloc(maxInfracoes, sizeof(Infracao));
+    int nInfracoes = 0;
+    percorrerArvore(root, infracoes, &nInfracoes);
+
+    // 3. Paginação e exibição
+    int pageSize = 10;
+    int currentPage = 0;
+    char opcao;
+
+    do {
+        printf("\n=== Listagem de Infrações (Página %d) ===\n", currentPage + 1);
+        int start = currentPage * pageSize;
+        int end = start + pageSize;
+        if (end > nInfracoes) end = nInfracoes;
+
+        for (int i = start; i < end; i++) {
+            printf("%2d) Veículo com matrícula %s excedeu a velocidade média (%.2f km/h).\n",
+                   i + 1, infracoes[i].matricula, infracoes[i].velocidadeMedia);
+        }
+
+        struct tm *tmInicio = localtime(&inicio);
+        struct tm *tmFim = localtime(&fim);
+        char inicioStr[20], fimStr[20];
+        strftime(inicioStr, sizeof(inicioStr), "%d-%m-%Y %H:%M:%S", tmInicio);
+        strftime(fimStr, sizeof(fimStr), "%d-%m-%Y %H:%M:%S", tmFim);
+        printf("\nForam encontradas %d infrações no período entre %s e %s\n", nInfracoes, inicioStr, fimStr);
+
+        printf("\nOpções:\n");
+        printf("n - Próxima página\n");
+        printf("p - Página anterior\n");
+        printf("t - Alterar número de infrações por página (atual: %d)\n", pageSize);
+        printf("s - Sair\n");
+        printf("Escolha: ");
+        scanf(" %c", &opcao);
+
+        if (opcao == 'n' && end < nInfracoes) {
+            currentPage++;
+        } else if (opcao == 'p' && currentPage > 0) {
+            currentPage--;
+        } else if (opcao == 't') {
+            printf("Digite o novo número de infrações por página: ");
+            scanf("%d", &pageSize);
+            if (pageSize <= 0) {
+                printf("Número inválido. Mantendo o valor anterior.\n");
+                pageSize = 10;
+            } else if (pageSize > nInfracoes) {
+                printf("O número inserido (%d) é superior ao número de infrações encontradas (%d).\n", pageSize, nInfracoes);
+                pageSize = nInfracoes;
+            }
+            currentPage = 0; // Reinicia na primeira página
+        } else if (opcao != 's') {
+            printf("Opção inválida.\n");
+        }
+    } while (opcao != 's');
+
+    free(infracoes);
+
+    liberarArvore(root);
+}
+
 // Esboço da função rankingVeiculos com paginação e busca por ID
 void rankingVeiculos(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, time_t inicio, time_t fim) {
     int maxVeiculos = 40000; // Ajustar conforme necessário
@@ -738,4 +892,3 @@ void rankingPorMarca(NodePassagem* listaPassagens, NodeDistancia* listaDistancia
 
     free(ranking);
 }
-

@@ -130,5 +130,11 @@ typedef struct kmMarca {
     double km;
 } KmMarca;
 
+typedef struct TreeNodeInfracao {
+    char matricula[CARRO_MAX_MATRICULA];
+    double velocidadeMedia;
+    struct TreeNodeInfracao *left, *right;
+} TreeNodeInfracao;
+
 #endif /* DATA_STRUCTURES_H */
 

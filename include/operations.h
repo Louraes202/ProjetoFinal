@@ -41,4 +41,6 @@ void rankingVeiculos(NodePassagem* listaPassagens, NodeDistancia* listaDistancia
 int cmpMarcaRanking(const void *a, const void *b);
 void rankingPorMarca(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, NodeCarro* listaCarros, time_t inicio, time_t fim);
 
+void listarInfracoes(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, NodeCarro* listaCarros, time_t inicio, time_t fim);
+
 #endif // OPERATIONS_H
