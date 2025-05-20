@@ -32,6 +32,15 @@ bool validarNIF(int nif);
 bool validarMatricula(const char *m);
 bool validarCodigoPostal(const char *cp);
 
+void ordenar_donos_NIF(Dono *dono, int total);
+void ordenar_carros(Carro *carros, int total, int (*comparar)(const Carro *, const Carro *));
+int comparar_matricula(const Carro *a, const Carro *b);
+int comparar_marca(const Carro *a, const Carro *b);
+int comparar_modelo(const Carro *a, const Carro *b);
+int verificacao_periodo(const char *dataHora, const char *inicio, const char *fim);
+int veiculo_ja_adicionado(const int lista[], int total, int id);
+void mostrar_veiculos_periodo(Passagem passagens[], int total_passagens, Carro carros[], int total_carros);
+
 int parseTimestampCustom(const char *dataHora, struct tm *tm);
 time_t parseTimestamp(const char *dataHora);
 double obterDistancia(NodeDistancia* lista, int id1, int id2);

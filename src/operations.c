@@ -246,13 +246,6 @@ size_t calcularMemoriaTotal(NodeDono* listaDonos, NodeCarro* listaCarros, NodeSe
 
 
 
-/**
-
-/**
- * @brief Cada nó armazena um ponteiro para uma passagem e ponteiros para os nós esquerdo e direito.
- * 
- * @param lista 
- */
 void libertarListaPassagens(NodePassagem** lista) {
     NodePassagem *atual = *lista, *seguinte;
     int cont = 0;
@@ -266,26 +259,109 @@ void libertarListaPassagens(NodePassagem** lista) {
     printf("\nMemória de %d nós Passagem libertada.\n", cont);
 }
 
-typedef struct TreeNode {
-    Passagem *p;
-    struct TreeNode *l, *r;
-} TreeNode;
+void ordenar_donos_NIF(Dono *dono, int total) {
+    for (int i = 0; i < total - 1; i++) {
+        int min_index = i;
+        for (int j = i + 1; j < total; j++) {
+            if (dono[j].numeroContribuinte < dono[min_index].numeroContribuinte) {
+                min_index = j;
+            }
+        }
+        if (min_index != i) {
+            Dono temp = dono[i];
+            dono[i] = dono[min_index];
+            dono[min_index] = temp;
+        }
+    }
+}
 
-/**
- * @brief A função insere a nova passagem de forma ordenada na árvore binária,
- * usando o id do veículo como chave de ordenação.
- * 
- * @param root 
- * @param p 
- */
-void insertTree(TreeNode **root, Passagem *p) {
-if (!*root) {
-    *root = malloc(sizeof **root);
-    (*root)->p = p; (*root)->l = (*root)->r = NULL;
-} else if (p->idVeiculo < (*root)->p->idVeiculo)
-    insertTree(&(*root)->l, p);
-else
-    insertTree(&(*root)->r, p);
+void ordenar_carros(Carro *carros, int total, int (*comparar)(const Carro *, const Carro *)) {
+    for (int i = 0; i < total - 1; i++) {
+        int min_index = i;
+        for (int j = i + 1; j < total; j++) {
+            if (comparar(&carros[j], &carros[min_index]) < 0) {
+                min_index = j;
+            }
+        }
+        if (min_index != i) {
+            Carro temp = carros[i];
+            carros[i] = carros[min_index];
+            carros[min_index] = temp;
+        }
+    }
+}
+
+int comparar_matricula(const Carro *a, const Carro *b) {
+    return strcmp(a->matricula, b->matricula);
+}
+
+int comparar_marca(const Carro *a, const Carro *b) {
+    return strcmp(a->marca, b->marca);
+}
+
+int comparar_modelo(const Carro *a, const Carro *b) {
+    return strcmp(a->modelo, b->modelo);
+}
+
+int verificacao_periodo(const char *dataHora, const char *inicio, const char *fim) {
+    return strcmp(dataHora, inicio) >= 0 && strcmp(dataHora, fim) <= 0;
+}
+
+int veiculo_ja_adicionado(const int lista[], int total, int id) {
+    for (int i = 0; i < total; i++) {
+        if (lista[i] == id) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+void mostrar_veiculos_periodo(Passagem passagens[], int total_passagens, Carro carros[], int total_carros) {
+    char inicio[PASSAGEM_MAX_DATAHORA];
+    char fim[PASSAGEM_MAX_DATAHORA];
+
+    printf("Introduza a data/hora de INÍCIO (formato DD-MM-AAAA_HH:MM:SS.xxx): ");
+    scanf(" %24[^\n]", inicio);
+
+    printf("Introduza a data/hora de FIM (formato DD-MM-AAAA_HH:MM:SS.xxx): ");
+    scanf(" %24[^\n]", fim);
+
+    int ids_unicos[MAX_CARROS];
+    int total_ids = 0;
+
+    for (int i = 0; i < total_passagens; i++) {
+        if (verificacao_periodo(passagens[i].dataHora, inicio, fim)) {
+            int id = passagens[i].idVeiculo;
+            if (!veiculo_ja_adicionado(ids_unicos, total_ids, id)) {
+                ids_unicos[total_ids++] = id;
+            }
+        }
+    }
+
+    Carro encontrados[MAX_CARROS];
+    int totalEncontrados = 0;
+    for (int i = 0; i < total_ids; i++) {
+        for (int j = 0; j < total_carros; j++) {
+            if (carros[j].idVeiculo == ids_unicos[i]) {
+                encontrados[totalEncontrados++] = carros[j];
+                break;
+            }
+        }
+    }
+
+    ordenar_carros(encontrados, totalEncontrados, comparar_matricula);
+
+    printf("\n=== Veículos que circularam entre %s e %s ===\n", inicio, fim);
+    for (int i = 0; i < totalEncontrados; i++) {
+        printf("Matrícula: %s\tMarca: %s\tModelo: %s\n",
+               encontrados[i].matricula,
+               encontrados[i].marca,
+               encontrados[i].modelo);
+    }
+
+    if (totalEncontrados == 0) {
+        printf("Nenhum veículo encontrado neste intervalo.\n");
+    }
 }
 
 // Funções de registar
@@ -892,3 +968,4 @@ void rankingPorMarca(NodePassagem* listaPassagens, NodeDistancia* listaDistancia
 
     free(ranking);
 }
+
