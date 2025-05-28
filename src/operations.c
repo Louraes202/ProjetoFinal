@@ -522,6 +522,7 @@ void registarPassagem(NodePassagem** listaPassagens) {
     novo->passagem.idVeiculo  = idV;
     strncpy(novo->passagem.dataHora, dataHora, PASSAGEM_MAX_DATAHORA);
     novo->passagem.tipoRegisto = tipo;
+    novo->passagem.ts = parseTimestamp(novo->passagem.dataHora);
 
     novo->next = *listaPassagens;
     *listaPassagens = novo;
@@ -571,218 +572,685 @@ bool validarCodigoPostal(const char *cp) {
     return true;
 }
 
-// Função personalizada para analisar data e hora no formato "dd-mm-yyyy HH:MM:SS"
-int parseTimestampCustom(const char *dataHora, struct tm *tm) {
-    // Inicializa a estrutura tm com zeros
-    memset(tm, 0, sizeof(struct tm));
-
-    // Analisa a string no formato "dd-mm-yyyy HH:MM:SS"
-    if (sscanf(dataHora, "%d-%d-%d %d:%d:%d",
-               &tm->tm_mday, &tm->tm_mon, &tm->tm_year,
-               &tm->tm_hour, &tm->tm_min, &tm->tm_sec) != 6) {
-        return 0; // Retorna 0 se a análise falhar
-    }
-
-    // Ajusta os valores para o formato esperado pela struct tm
-    tm->tm_mon -= 1;  // Meses vão de 0 a 11
-    tm->tm_year -= 1900; // Anos são contados a partir de 1900
-
-    // Validações adicionais para garantir que o timestamp é válido
-    if (tm->tm_year < 0 || tm->tm_mon < 0 || tm->tm_mon > 11 ||
-        tm->tm_mday < 1 || tm->tm_mday > 31 || tm->tm_hour < 0 ||
-        tm->tm_hour > 23 || tm->tm_min < 0 || tm->tm_min > 59 ||
-        tm->tm_sec < 0 || tm->tm_sec > 59) {
-        return 0; // Retorna 0 se os valores estiverem fora dos limites
-    }
-
-    return 1; // Retorna 1 se a análise for bem-sucedida
-}
-
-time_t parseTimestamp(const char *dataHora) {
-    struct tm tm;
-    memset(&tm, 0, sizeof(struct tm));
-
-    // Use a função personalizada para analisar a data e hora
-    if (!parseTimestampCustom(dataHora, &tm)) {
-        fprintf(stderr, "Erro: formato de data/hora inválido: %s\n", dataHora);
-        return -1; // Retorna -1 em caso de erro
-    }
-
-    return mktime(&tm); // Converte struct tm para time_t
-}
-
-// Função para obter a distância entre dois sensores
-double obterDistancia(NodeDistancia* lista, int id1, int id2) {
-    for (NodeDistancia* d = lista; d; d = d->next) {
-        if ((d->distancia.idSensor1 == id1 && d->distancia.idSensor2 == id2) ||
-            (d->distancia.idSensor1 == id2 && d->distancia.idSensor2 == id1)) {
-            return d->distancia.distancia;
-        }
-    }
-    return 0.0;
-}
-
 // Função de comparação para qsort (ordem decrescente)
 int cmpVeiculoRanking(const void *a, const void *b) {
     double diff = ((KmVeiculo*)b)->km - ((KmVeiculo*)a)->km;
     return (diff > 0) - (diff < 0);
 }
 
-// Definição da struct Infracao
-typedef struct {
-    char matricula[CARRO_MAX_MATRICULA];
-    double velocidadeMedia;
-} Infracao;
+
+/**
+ * @brief Lista as infrações ocorridas num intervalo de tempo especificado.
+ *
+ * Analisa as listas de carros, passagens e medições de distâncias para identificar e
+ * listar as infrações que aconteceram entre os tempos indicados por @p inicio e @p fim.
+ *
+ * @note Enunciado: 10. Listagem de infrações. Contém a matrícula dos veículos que
+ * circularam com velocidade média superior a 120 km/h durante
+ * determinado período.
+ *
+ * @param listaCarros Lista dos carros registados.
+ * @param listaPassagens Lista das passagens registadas.
+ * @param listaDistancias Lista das medições de distâncias.
+ * @param inicio O instante de início do intervalo a considerar.
+ * @param fim O instante de fim do intervalo a considerar.
+ */
 
 
-// Função para liberar a árvore binária
-void liberarArvore(TreeNodeInfracao *root) {
-    if (!root) return;
-    liberarArvore(root->left);
-    liberarArvore(root->right);
-    free(root);
+ // Polyfill simples de strptime para Windows
+char* strptime(const char* s, const char* format, struct tm* tm) {
+    // Supomos o formato "%d-%m-%Y %H:%M:%S"
+    int d, m, y, H, M, S;
+    if (sscanf(s, "%d-%d-%d %d:%d:%d", &d, &m, &y, &H, &M, &S) == 6) {
+        tm->tm_mday = d;
+        tm->tm_mon  = m - 1;
+        tm->tm_year = y - 1900;
+        tm->tm_hour = H;
+        tm->tm_min  = M;
+        tm->tm_sec  = S;
+        tm->tm_isdst = -1;
+        return (char*)s + strlen(s);
+    }
+    return NULL;
 }
 
-// Função para inserir na árvore binária
-void inserirInfracao(TreeNodeInfracao **root, const char *matricula, double velocidadeMedia) {
-    if (!*root) {
+// Função auxiliar para contar nós na árvore
+static void contarInfracoes(TreeNodeInfracao* arv, int* count) {
+    if (arv) {
+        (*count)++;
+        contarInfracoes(arv->left, count);
+        contarInfracoes(arv->right, count);
+    }
+}
+
+// Função auxiliar para armazenar nós da árvore em um vetor (in‑order)
+static void armazenarInfracoesAux(TreeNodeInfracao* arv, TreeNodeInfracao** arr, int* idx) {
+    if (arv) {
+        armazenarInfracoesAux(arv->left, arr, idx);
+        arr[*idx] = arv;
+        (*idx)++;
+        armazenarInfracoesAux(arv->right, arr, idx);
+    }
+}
+
+/**
+ * @brief Transforma a árvore de infrações numa lista (vetor) dinâmico.
+ * @param arvInfra Raiz da árvore de infrações.
+ * @param total Endereço de uma variável que receberá o número total de infrações.
+ * @return Vetor de ponteiros para TreeNodeInfracao ou NULL se nenhum.
+ */
+TreeNodeInfracao** armazenarInfracoes(TreeNodeInfracao* arvInfra, int* total) {
+    int count = 0;
+    contarInfracoes(arvInfra, &count);
+    *total = count;
+    if (count == 0)
+        return NULL;
+    TreeNodeInfracao** arr = malloc(count * sizeof(TreeNodeInfracao*));
+    if (!arr) {
+        perror("Erro ao alocar memória para vetor de infrações");
+        *total = 0;
+        return NULL;
+    }
+    int idx = 0;
+    armazenarInfracoesAux(arvInfra, arr, &idx);
+    return arr;
+}
+
+/**
+ * @brief Libera a árvore de infrações recursivamente.
+ * @param arvInfra Raiz da árvore de infrações.
+ */
+void libertarArvoreInfracoes(TreeNodeInfracao* arvInfra) {
+    if (!arvInfra)
+        return;
+    libertarArvoreInfracoes(arvInfra->left);
+    libertarArvoreInfracoes(arvInfra->right);
+    free(arvInfra);
+}
+
+
+
+
+// Função de parsing da timesstamp
+time_t parseTimestamp(const char *dataHora) {
+    struct tm tm;
+    char buffer[21]; // Espaço para os 19 caracteres e '\0'
+    
+    // Copiar somente os primeiros 19 caracteres ("DD-MM-AAAA HH:MM:SS")
+    strncpy(buffer, dataHora, 19);
+    buffer[19] = '\0';
+    
+    if (strptime(buffer, "%d-%m-%Y %H:%M:%S", &tm) == NULL) {
+        fprintf(stderr, "Erro ao analisar a data/hora (usando \"%s\"): %s\n", buffer, dataHora);
+        return -1;
+    }
+    return mktime(&tm);
+}
+
+// Função para obter distâncias entre sensores
+double obterDistancia(NodeDistancia* lista, int id1, int id2) {
+    for (NodeDistancia* p = lista; p; p = p->next) {
+        if ((p->distancia.idSensor1 == id1 && p->distancia.idSensor2 == id2) ||
+            (p->distancia.idSensor1 == id2 && p->distancia.idSensor2 == id1)) {
+            return p->distancia.distancia;
+        }
+    }
+    return -1.0; // Distância não encontrada
+}
+
+// Função para calcular a velocidade média total de um veículo
+double calcularVelocidadeMediaPonderada(NodePassagem* passagens, NodeDistancia* listaDistancias) {
+    if (!passagens || !passagens->next) return -1.0; // É necessário, pelo menos, dois pontos
+
+    double somaVelocidades = 0.0;
+    double tempoTotal = 0.0;
+
+    // Percorrer as passagens consecutivas
+    for (NodePassagem* p = passagens; p && p->next; p = p->next) {
+        double distancia = obterDistancia(listaDistancias, p->passagem.idSensor, p->next->passagem.idSensor);
+        if (distancia < 0 || distancia > 500.0) { // Ignorar distâncias inválidas
+            continue;
+        }
+
+        double tempo = difftime(p->next->passagem.ts, p->passagem.ts);
+        if (tempo <= 0 || tempo > 86400) { // Ignorar tempos inválidos (maior que 24 horas)
+            continue;
+        }
+
+        double velocidade = (distancia / tempo) * 3600.0; // Velocidade em km/h
+        somaVelocidades += velocidade * tempo; // Ponderar a velocidade pelo tempo
+        tempoTotal += tempo; // Somar o tempo do trecho
+    }
+
+    if (tempoTotal <= 0) return -1.0; // Evitar divisão por zero
+    return somaVelocidades / tempoTotal; // Velocidade média ponderada
+}
+
+double calcularVelocidadeInfracao(NodePassagem* passagens,
+                                  NodeDistancia* listaDistancias)
+{
+    double maxVel = 0.0;
+    NodePassagem* pendente = NULL;
+
+    for (NodePassagem* p = passagens; p; p = p->next) {
+        if (p->passagem.tipoRegisto == 0) {
+            // marca este registo de entrada
+            pendente = p;
+        }
+        else if (p->passagem.tipoRegisto == 1 && pendente) {
+            // quando aparece a saída correspondente
+            double d  = obterDistancia(listaDistancias,
+                                       pendente->passagem.idSensor,
+                                       p->passagem.idSensor);
+            double dt = difftime(p->passagem.ts,
+                                 pendente->passagem.ts);
+
+            if (d >= 0 && dt > 0 && dt <= 86400) {
+                double vel = (d / dt) * 3600.0;  // km/h
+                if (vel > maxVel) maxVel = vel;
+            }
+            // esgota o par entrada→saída
+            pendente = NULL;
+        }
+    }
+
+    return maxVel;
+}
+
+// Função auxiliar para filtrar passagens dentro do intervalo [inicio, fim]
+NodePassagem* filtrarPassagens(NodePassagem* lista, time_t inicio, time_t fim) {
+    NodePassagem* filtradas = NULL;
+    NodePassagem* ultimo = NULL;
+    for (NodePassagem* p = lista; p; p = p->next) {
+        // Se o campo ts já estiver preenchido, use-o
+        time_t t = p->passagem.ts;  
+        // Caso contrário, use parseTimestamp
+        // time_t t = (p->passagem.ts != 0 ? p->passagem.ts : parseTimestamp(p->passagem.dataHora));
+        if (t >= inicio && t <= fim) {
+            NodePassagem* nova = malloc(sizeof(NodePassagem));
+            if (!nova) {
+                perror("Erro ao alocar memória para passagem filtrada");
+                return filtradas;
+            }
+            nova->passagem = p->passagem;
+            nova->next = NULL;
+            if (filtradas == NULL) {
+                filtradas = nova;
+                ultimo = nova;
+            } else {
+                ultimo->next = nova;
+                ultimo = nova;
+            }
+        }
+    }
+    return filtradas;
+}
+
+// Função hash simples: módulo do idVeiculo com o número de buckets
+static size_t hashFunction(int idVeiculo, size_t numBuckets) {
+    return ((size_t)idVeiculo) % numBuckets;
+}
+
+// Cria a tabela hash com um número especificado de buckets
+HashTablePassagens* criarHashTablePassagens(size_t numBuckets) {
+    HashTablePassagens* ht = malloc(sizeof(HashTablePassagens));
+    if (!ht) {
+        perror("Erro ao alocar memória para HashTablePassagens");
+        return NULL;
+    }
+    ht->numBuckets = numBuckets;
+    ht->buckets = calloc(numBuckets, sizeof(PassagemGroup*));
+    if (!ht->buckets) {
+        perror("Erro ao alocar memória para os buckets da tabela hash");
+        free(ht);
+        return NULL;
+    }
+    return ht;
+}
+
+// Insere uma passagem na tabela hash, agrupando-a pelo idVeiculo
+void inserirPassagemHash(HashTablePassagens* ht, const Passagem* passagem) {
+    if (!ht) return;
+    size_t index = hashFunction(passagem->idVeiculo, ht->numBuckets);
+    PassagemGroup* grupo = ht->buckets[index];
+
+    // Procura se já existe um grupo para esse veículo
+    while (grupo) {
+        if (grupo->idVeiculo == passagem->idVeiculo)
+            break;
+        grupo = grupo->next;
+    }
+    // Se não existe, cria um novo grupo
+    if (!grupo) {
+        grupo = malloc(sizeof(PassagemGroup));
+        if (!grupo) {
+            perror("Erro ao alocar memória para PassagemGroup");
+            return;
+        }
+        grupo->idVeiculo = passagem->idVeiculo;
+        grupo->passagens = NULL;
+        grupo->next = ht->buckets[index];
+        ht->buckets[index] = grupo;
+    }
+    // Insere a passagem no início da lista ligada do grupo
+    NodePassagem* novoNo = malloc(sizeof(NodePassagem));
+    if (!novoNo) {
+        perror("Erro ao alocar memória para NodePassagem");
+        return;
+    }
+    novoNo->passagem = *passagem;
+    novoNo->next = grupo->passagens;
+    grupo->passagens = novoNo;
+}
+
+// Busca a lista de passagens para um veículo específico
+NodePassagem* pesquisarPassagensParaVeiculo(HashTablePassagens* ht, int idVeiculo) {
+    if (!ht) return NULL;
+    size_t index = hashFunction(idVeiculo, ht->numBuckets);
+    PassagemGroup* grupo = ht->buckets[index];
+    while (grupo) {
+        if (grupo->idVeiculo == idVeiculo)
+            return grupo->passagens;
+        grupo = grupo->next;
+    }
+    return NULL;
+}
+
+// Libera toda a tabela hash e as passagens agrupadas
+void libertarHashTablePassagens(HashTablePassagens* ht) {
+    if (!ht) return;
+    for (size_t i = 0; i < ht->numBuckets; i++) {
+        PassagemGroup* grupo = ht->buckets[i];
+        while (grupo) {
+            PassagemGroup* temp = grupo;
+            // Libera a lista de passagens do grupo
+            NodePassagem* p = grupo->passagens;
+            while (p) {
+                NodePassagem* tempNo = p;
+                p = p->next;
+                free(tempNo);
+            }
+            grupo = grupo->next;
+            free(temp);
+        }
+    }
+    free(ht->buckets);
+    free(ht);
+}
+
+// Função auxiliar para mesclar duas listas ordenadas de passagens por data/hora
+static NodePassagem* mergePassagens(NodePassagem* left, NodePassagem* right) {
+    if (!left)  return right;
+    if (!right) return left;
+
+    NodePassagem* result;
+    // compara time_t (ts) em vez de string
+    if (left->passagem.ts <= right->passagem.ts) {
+        result = left;
+        result->next = mergePassagens(left->next, right);
+    } else {
+        result = right;
+        result->next = mergePassagens(left, right->next);
+    }
+    return result;
+}
+
+
+// Função auxiliar para aplicar merge sort na lista de passagens
+static NodePassagem* mergeSortPassagens(NodePassagem* head) {
+    if (!head || !head->next)
+        return head;
+    
+    // Encontrar o meio da lista usando o método do ponteiro lento/rápido
+    NodePassagem* slow = head;
+    NodePassagem* fast = head->next;
+    while (fast && fast->next) {
+        slow = slow->next;
+        fast = fast->next->next;
+    }
+    NodePassagem* mid = slow->next;
+    slow->next = NULL;
+    
+    NodePassagem* left = mergeSortPassagens(head);
+    NodePassagem* right = mergeSortPassagens(mid);
+    
+    return mergePassagens(left, right);
+}
+
+NodeCarro* pesquisarCarroPorId(NodeCarro* listaCarros, int idVeiculo) {
+    for (NodeCarro* p = listaCarros; p; p = p->next) {
+        if (p->carro.idVeiculo == idVeiculo)
+            return p;
+    }
+    return NULL;
+}
+
+// --- Função auxiliar para inserir uma infração na árvore ---
+void inserirInfracao(TreeNodeInfracao** root, const char* matricula, double velocidadeMedia) {
+    if (*root == NULL) {
         *root = malloc(sizeof(TreeNodeInfracao));
+        if (!*root) {
+            perror("Erro ao alocar memória para infração");
+            return;
+        }
         strncpy((*root)->matricula, matricula, CARRO_MAX_MATRICULA);
         (*root)->velocidadeMedia = velocidadeMedia;
         (*root)->left = (*root)->right = NULL;
-    } else if (velocidadeMedia > (*root)->velocidadeMedia) {
-        inserirInfracao(&(*root)->left, matricula, velocidadeMedia);
+        return;
+    }
+    int cmp = strcmp(matricula, (*root)->matricula);
+    if (cmp < 0) {
+        inserirInfracao(&((*root)->left), matricula, velocidadeMedia);
+    } else if (cmp > 0) {
+        inserirInfracao(&((*root)->right), matricula, velocidadeMedia);
     } else {
-        inserirInfracao(&(*root)->right, matricula, velocidadeMedia);
+        // Se já houver infração para esse veículo, guarda a maior velocidade
+        if (velocidadeMedia > (*root)->velocidadeMedia)
+            (*root)->velocidadeMedia = velocidadeMedia;
     }
 }
 
-    // Função para percorrer a árvore binária em ordem decrescente
-void percorrerArvore(TreeNodeInfracao *root, Infracao *infracoes, int *index) {
-    if (!root) return;
-    percorrerArvore(root->left, infracoes, index);
-    strncpy(infracoes[*index].matricula, root->matricula, CARRO_MAX_MATRICULA);
-    infracoes[*index].velocidadeMedia = root->velocidadeMedia;
-    (*index)++;
-    percorrerArvore(root->right, infracoes, index);
-}
 
-// Função para listar infrações de velocidade com menu de páginas (otimizada com árvore binária)
-// A função está a funcionar corretamente, mas pode ser melhorada a nível de eficiência
-void listarInfracoes(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, NodeCarro* listaCarros, time_t inicio, time_t fim) {
 
-    TreeNodeInfracao *root = NULL;
+// Função de listar infraçoes
+void listarInfracoes(NodeCarro* listaCarros,
+                     NodePassagem* listaPassagens,
+                     NodeDistancia* listaDistancias,
+                     time_t inicio,
+                     time_t fim)
+{
+    TreeNodeInfracao* arvInfra = NULL;
+    clock_t start = clock();
 
-    // 1. Processar passagens e calcular infrações
-    printf("A carregar");
-    int loadingDots = 0;
-    for (NodePassagem* p = listaPassagens; p; p = p->next) {
-        // Atualizar mensagem de carregamento
-        printf("\rA carregar%s", (loadingDots++ % 4 == 0) ? "." : (loadingDots % 4 == 1) ? ".." : (loadingDots % 4 == 2) ? "..." : "....");
-        fflush(stdout);
+    // 1) Filtrar as passagens dentro do intervalo
+    NodePassagem* passagensFiltradas = filtrarPassagens(listaPassagens, inicio, fim);
+    if (!passagensFiltradas) {
+        printf("Nenhuma passagem encontrada no intervalo especificado.\n");
+        return;
+    }
 
-        time_t t = parseTimestamp(p->passagem.dataHora);
-        if (t < inicio || t > fim) continue;
+    // 2) Agrupar as passagens por veículo numa tabela hash
+    HashTablePassagens* ht = criarHashTablePassagens(10);
+    if (!ht) {
+        printf("Erro ao criar a tabela hash para passagens.\n");
+        libertarListaPassagens(&passagensFiltradas);
+        return;
+    }
+    for (NodePassagem* p = passagensFiltradas; p; p = p->next)
+        inserirPassagemHash(ht, &p->passagem);
 
-        int idV = p->passagem.idVeiculo;
-        int idS = p->passagem.idSensor;
-        int idS_ant = -1;
-        time_t t_ant = -1;
+    // 3) Ordenar cronologicamente cada grupo
+    for (size_t i = 0; i < ht->numBuckets; i++) {
+        for (PassagemGroup* g = ht->buckets[i]; g; g = g->next)
+            g->passagens = mergeSortPassagens(g->passagens);
+    }
 
-        NodePassagem* ant = p->next;
-        while (ant) {
-            if (ant->passagem.idVeiculo == idV) {
-                idS_ant = ant->passagem.idSensor;
-                t_ant = parseTimestamp(ant->passagem.dataHora);
-                break;
-            }
-            ant = ant->next;
-        }
-        if (idS_ant == -1 || t_ant == -1) continue;
+    // 4) Detectar infrações: usando um array para armazenar a última "entrada" (tipo 0)
+    // para cada sensor. (Nota: supõe-se que os ids dos sensores sejam < MAX_SENSORES)
+    NodePassagem* pendentePorSensor[MAX_SENSORES] = { NULL };
 
-        double dist = obterDistancia(listaDistancias, idS_ant, idS);
-        double tempoHoras = difftime(t, t_ant) / 3600.0; // Converter tempo para horas
-        if (tempoHoras <= 0) continue;
+    for (size_t i = 0; i < ht->numBuckets; i++) {
+        for (PassagemGroup* g = ht->buckets[i]; g; g = g->next) {
+            double maxVel = 0.0;
+            // Reinicia o array de pendente para o grupo atual
+            memset(pendentePorSensor, 0, sizeof(pendentePorSensor));
 
-        double velocidadeMedia = dist / tempoHoras;
-        if (velocidadeMedia > 120.0) {
-            char matricula[CARRO_MAX_MATRICULA] = "";
-            for (NodeCarro* c = listaCarros; c; c = c->next) {
-                if (c->carro.idVeiculo == idV) {
-                    strncpy(matricula, c->carro.matricula, CARRO_MAX_MATRICULA);
-                    break;
+            // Percorre as passagens já ordenadas
+            for (NodePassagem* p = g->passagens; p; p = p->next) {
+                int s = p->passagem.idSensor;
+                if (s < 0 || s >= MAX_SENSORES) continue;
+
+                if (p->passagem.tipoRegisto == 0) {
+                    // Entrada: guarda o registo para o sensor s
+                    pendentePorSensor[s] = p;
+                }
+                else if (p->passagem.tipoRegisto == 1) {
+                    // Saída: verifica se há um registo de entrada pendente
+                    NodePassagem* ent = pendentePorSensor[s];
+                    if (!ent) continue;
+
+                    double dt = difftime(p->passagem.ts, ent->passagem.ts);
+                    double d  = obterDistancia(listaDistancias, ent->passagem.idSensor, p->passagem.idSensor);
+                    // Debug: valores calculados
+                    printf("[DEBUG] Grupo %d - Sensor %d: Saída com timestamp %ld; dt=%.2f; d=%.2f\n",
+                        g->idVeiculo, s, p->passagem.ts, dt, d);
+
+                    // Apenas calcula se os valores estiverem dentro dos limites realistas
+                    if (dt >= 10 && dt <= 86400 && d >= 0.1 && d <= 100.0) {
+                        double vel = (d / dt) * 3600.0;
+                        printf("[DEBUG] Grupo %d - Sensor %d: Velocidade calculada=%.2f km/h\n",
+                            g->idVeiculo, s, vel);
+                        if (vel > maxVel)
+                            maxVel = vel;
+                    }
+                    // Consome a entrada para evitar reprocessamento
+                    pendentePorSensor[s] = NULL;
+                }
+            } // fim do loop do grupo
+
+            // Regista a infração se a velocidade máxima ultrapassar o limite
+            if (maxVel > 120.0) {
+                NodeCarro* carro = pesquisarCarroPorId(listaCarros, g->idVeiculo);
+                if (carro) {
+                    inserirInfracao(&arvInfra, carro->carro.matricula, maxVel);
+                    printf("[DEBUG] Infração registada para o veículo %d (Matrícula: %s) com velocidade %.2f km/h\n",
+                        g->idVeiculo, carro->carro.matricula, maxVel);
                 }
             }
-            if (strlen(matricula) > 0) {
-                inserirInfracao(&root, matricula, velocidadeMedia);
-            }
         }
     }
-    printf("\n");
 
-    // 2. Transferir dados da árvore para um array
-    int maxInfracoes = 1000; // Ajustar conforme necessário
-    Infracao *infracoes = calloc(maxInfracoes, sizeof(Infracao));
-    int nInfracoes = 0;
-    percorrerArvore(root, infracoes, &nInfracoes);
+    // 5) Converter a árvore de infrações num vetor e medir o tempo de processamento
+    int totalInfra = 0;
+    TreeNodeInfracao** infraArray = armazenarInfracoes(arvInfra, &totalInfra);
+    clock_t end = clock();
+    double processingTime = (double)(end - start) / CLOCKS_PER_SEC;
 
-    // 3. Paginação e exibição
+    // 6) Exibir o resumo de infrações com paginação
+    if (!infraArray || totalInfra == 0) {
+        printf("Nenhuma infração encontrada no período especificado.\n");
+    } else {
+        int pageSize = 5, currentPage = 0;
+        char opcao;
+        do {
+            int startIdx = currentPage * pageSize;
+            int endIdx   = startIdx + pageSize;
+            if (endIdx > totalInfra)
+                endIdx = totalInfra;
+
+            printf("\n=== Resumo de Infrações ===\n");
+            printf("Total: %d infrações | Tempo: %.3f s\n", totalInfra, processingTime);
+            printf("Exibindo infrações [%d - %d]:\n", startIdx + 1, endIdx);
+            for (int i = startIdx; i < endIdx; i++) {
+                printf("%2d) Matrícula: %s | Vel. Máx.: %.2f km/h\n",
+                       i + 1,
+                       infraArray[i]->matricula,
+                       infraArray[i]->velocidadeMedia);
+            }
+            printf("\nOpções:\n");
+            printf(" n - Próxima página\n p - Página anterior\n t - Alterar itens por página\n b - Buscar matrícula\n s - Sair\n");
+            printf("Escolha: ");
+            scanf(" %c", &opcao);
+
+            if (opcao == 'n' && endIdx < totalInfra)
+                currentPage++;
+            else if (opcao == 'p' && currentPage > 0)
+                currentPage--;
+            else if (opcao == 't') {
+                printf("Novo número de itens por página: ");
+                scanf("%d", &pageSize);
+                if (pageSize <= 0)
+                    pageSize = 5;
+                currentPage = 0;
+            }
+            else if (opcao == 'b') {
+                char busca[CARRO_MAX_MATRICULA];
+                printf("Matrícula: ");
+                scanf("%s", busca);
+                int found = 0;
+                for (int i = 0; i < totalInfra; i++) {
+                    if (strcmp(infraArray[i]->matricula, busca) == 0) {
+                        printf("Encontrado na posição %d: %.2f km/h\n",
+                               i + 1, infraArray[i]->velocidadeMedia);
+                        found = 1;
+                        break;
+                    }
+                }
+                if (!found)
+                    printf("Matrícula '%s' não encontrada.\n", busca);
+                printf("Pressione Enter para continuar...");
+                while(getchar() != '\n');
+                getchar();
+            }
+        } while (opcao != 's');
+    }
+
+    // 7) Liberar todos os recursos
+    free(infraArray);
+    libertarArvoreInfracoes(arvInfra);
+    libertarHashTablePassagens(ht);
+    libertarListaPassagens(&passagensFiltradas);
+}
+
+int cmpRanking(const void* a, const void* b) {
+    RankingInfra* r1 = (RankingInfra*)a;
+    RankingInfra* r2 = (RankingInfra*)b;
+    return r2->infraCount - r1->infraCount;
+}
+
+void rankingInfraVeiculos(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, NodeCarro* listaCarros, time_t inicio, time_t fim) {
+    // 1. Filtrar as passagens dentro do intervalo
+
+    NodePassagem* passagensFiltradas = filtrarPassagens(listaPassagens, inicio, fim);
+    if (!passagensFiltradas) {
+        printf("Nenhuma passagem encontrada no intervalo especificado.\n");
+        return;
+    }
+    
+    // 2. Criar uma tabela hash para agrupar as passagens por veículo
+    HashTablePassagens* ht = criarHashTablePassagens(10);
+    if (!ht) {
+        printf("Erro ao criar a tabela hash para passagens.\n");
+        libertarListaPassagens(&passagensFiltradas);
+        return;
+    }
+    for (NodePassagem* p = passagensFiltradas; p; p = p->next) {
+        inserirPassagemHash(ht, &p->passagem);
+    }
+    
+    // 3. Preparar estrutura para ranking
+    RankingInfra* ranking = malloc(sizeof(RankingInfra) * MAX_CARROS);
+    if (!ranking) {
+        perror("Erro ao alocar ranking");
+        libertarHashTablePassagens(ht);
+        libertarListaPassagens(&passagensFiltradas);
+        return;
+    }
+    int nRanking = 0;
+    
+    // 4. Para cada grupo na tabela hash, ordenar passagens e contar infrações
+    for (size_t i = 0; i < ht->numBuckets; i++) {
+        PassagemGroup* grupo = ht->buckets[i];
+        while (grupo) {
+            printf("Ordenar grupo do veículo %d - Passagens:\n", grupo->idVeiculo);
+            for (NodePassagem* p = grupo->passagens; p; p = p->next) {
+                printf("    dataHora = \"%s\"\n", p->passagem.dataHora);
+            }   
+
+            // Ordena as passagens do grupo (assumindo que foram inseridas sem ordem)
+            grupo->passagens = mergeSortPassagens(grupo->passagens);
+
+            int count = 0;
+            // Percorre as passagens consecutivas e calcula a velocidade média de cada par
+            for (NodePassagem* p = grupo->passagens; p && p->next; p = p->next) {
+                double d = obterDistancia(listaDistancias, p->passagem.idSensor, p->next->passagem.idSensor);
+                if (d < 0)
+                    continue; // ignora se a distância não for encontrada
+    
+                double dt = difftime(p->next->passagem.ts, p->passagem.ts);
+                if (dt > 0) {
+                    double speed = (d / dt) * 3600.0;
+                    if (speed > 120.0)
+                        count++;
+                }
+            }
+
+    
+            if (count > 0) {
+                // Buscar os dados do veículo para obter a matrícula
+                NodeCarro* carro = pesquisarCarroPorId(listaCarros, grupo->idVeiculo);
+                if (!carro) {
+                    printf("Erro: Veículo com ID %d não encontrado.\n", grupo->idVeiculo);
+                    continue;
+                }                
+                if (carro) {
+                    ranking[nRanking].idVeiculo = grupo->idVeiculo;
+                    strncpy(ranking[nRanking].matricula, carro->carro.matricula, CARRO_MAX_MATRICULA);
+                    ranking[nRanking].infraCount = count;
+                    nRanking++;
+                }
+            }
+            grupo = grupo->next;
+        }
+    }
+    
+    // Se nenhum veículo teve infração, informa e encerra a função
+    if (nRanking == 0) {
+        printf("Nenhuma infração encontrada no período especificado.\n");
+        free(ranking);
+        libertarHashTablePassagens(ht);
+        libertarListaPassagens(&passagensFiltradas);
+        return;
+    }
+    
+    // 5. Ordenar o ranking (ordem decrescente de infrações)
+    qsort(ranking, nRanking, sizeof(RankingInfra), cmpRanking);
+    
+    // 6. Exibir ranking com paginação
     int pageSize = 10;
     int currentPage = 0;
     char opcao;
-
     do {
-        printf("\n=== Listagem de Infrações (Página %d) ===\n", currentPage + 1);
         int start = currentPage * pageSize;
         int end = start + pageSize;
-        if (end > nInfracoes) end = nInfracoes;
-
+        if (end > nRanking)
+            end = nRanking;
+    
+        printf("\n=== Ranking de Infrações por Veículo (Página %d) ===\n", currentPage + 1);
         for (int i = start; i < end; i++) {
-            printf("%2d) Veículo com matrícula %s excedeu a velocidade média (%.2f km/h).\n",
-                   i + 1, infracoes[i].matricula, infracoes[i].velocidadeMedia);
+            printf("%2d) Veículo %d | Matrícula: %s | Infrações: %d\n", 
+                   i + 1, ranking[i].idVeiculo, ranking[i].matricula, ranking[i].infraCount);
         }
-
-        struct tm *tmInicio = localtime(&inicio);
-        struct tm *tmFim = localtime(&fim);
-        char inicioStr[20], fimStr[20];
-        strftime(inicioStr, sizeof(inicioStr), "%d-%m-%Y %H:%M:%S", tmInicio);
-        strftime(fimStr, sizeof(fimStr), "%d-%m-%Y %H:%M:%S", tmFim);
-        printf("\nForam encontradas %d infrações no período entre %s e %s\n", nInfracoes, inicioStr, fimStr);
-
+    
         printf("\nOpções:\n");
         printf("n - Próxima página\n");
         printf("p - Página anterior\n");
-        printf("t - Alterar número de infrações por página (atual: %d)\n", pageSize);
         printf("s - Sair\n");
         printf("Escolha: ");
         scanf(" %c", &opcao);
-
-        if (opcao == 'n' && end < nInfracoes) {
+    
+        if (opcao == 'n' && end < nRanking)
             currentPage++;
-        } else if (opcao == 'p' && currentPage > 0) {
+        else if (opcao == 'p' && currentPage > 0)
             currentPage--;
-        } else if (opcao == 't') {
-            printf("Digite o novo número de infrações por página: ");
-            scanf("%d", &pageSize);
-            if (pageSize <= 0) {
-                printf("Número inválido. Mantendo o valor anterior.\n");
-                pageSize = 10;
-            } else if (pageSize > nInfracoes) {
-                printf("O número inserido (%d) é superior ao número de infrações encontradas (%d).\n", pageSize, nInfracoes);
-                pageSize = nInfracoes;
-            }
-            currentPage = 0; // Reinicia na primeira página
-        } else if (opcao != 's') {
-            printf("Opção inválida.\n");
-        }
-    } while (opcao != 's');
-
-    free(infracoes);
-
-    liberarArvore(root);
+    } while(opcao != 's');
+    
+    // 7. Liberar recursos
+    free(ranking);
+    libertarHashTablePassagens(ht);
+    libertarListaPassagens(&passagensFiltradas);
 }
 
-// Esboço da função rankingVeiculos com paginação e busca por ID
+
+
+/**
+ * @brief Gera e apresenta um ranking de veículos com base na distância percorrida e um periodo de tempo.
+ *
+ * @param listaPassagens Um ponteiro para o início de uma lista ligada que contém os dados de passagens dos veículos.
+ * @param listaDistancias Um ponteiro para uma lista ligada que contém informações sobre as distâncias entre os sensores.
+ * @param inicio Um valor time_t que representa o início do intervalo de tempo.
+ * @param fim Um valor time_t que representa o fim do intervalo de tempo.
+ */
 void rankingVeiculos(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, time_t inicio, time_t fim) {
     int maxVeiculos = 40000; // Ajustar conforme necessário
     KmVeiculo *ranking = calloc(maxVeiculos, sizeof(KmVeiculo));
@@ -969,3 +1437,137 @@ void rankingPorMarca(NodePassagem* listaPassagens, NodeDistancia* listaDistancia
     free(ranking);
 }
 
+void velocidadesMedias(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, NodeCarro* listaCarros, time_t inicio, time_t fim) {
+    // 1. Filtrar as passagens no intervalo
+    NodePassagem* passagensFiltradas = filtrarPassagens(listaPassagens, inicio, fim);
+    if (!passagensFiltradas) {
+        printf("Nenhuma passagem encontrada no intervalo especificado.\n");
+        return;
+    }
+    
+    // 2. Agrupar passagens por veículo usando a tabela hash existente
+    HashTablePassagens* ht = criarHashTablePassagens(100);
+    if (!ht) {
+        printf("Erro ao criar a tabela hash para passagens.\n");
+        libertarListaPassagens(&passagensFiltradas);
+        return;
+    }
+    for (NodePassagem* p = passagensFiltradas; p; p = p->next) {
+        inserirPassagemHash(ht, &p->passagem);
+    }
+    
+    // 3. Para cada grupo, ordenar as passagens e calcular a velocidade média
+
+    size_t capacidade = 1000;
+    VelocidadeMedia* ranking = malloc(sizeof(VelocidadeMedia) * capacidade);
+    if (!ranking) {
+        perror("Erro ao alocar memoria para ranking de velocidades");
+        libertarHashTablePassagens(ht);
+        libertarListaPassagens(&passagensFiltradas);
+        return;
+    }
+    int nVeiculos = 0;
+    
+    for (size_t i = 0; i < ht->numBuckets; i++) {
+        PassagemGroup* grupo = ht->buckets[i];
+        while (grupo) {
+            // Ordena as passagens do grupo para garantir que estão ordenadas por data/hora
+            grupo->passagens = mergeSortPassagens(grupo->passagens);
+            double velMedia = calcularVelocidadeMediaPonderada(grupo->passagens, listaDistancias);
+            if (velMedia > 0) {
+                // Expande o array se necessário
+                if (nVeiculos >= capacidade) {
+                    capacidade *= 2;
+                    VelocidadeMedia* temp = realloc(ranking, sizeof(VelocidadeMedia) * capacidade);
+                    if (!temp) {
+                        perror("Erro ao realocar ranking");
+                        free(ranking);
+                        libertarHashTablePassagens(ht);
+                        libertarListaPassagens(&passagensFiltradas);
+                        return;
+                    }
+                    ranking = temp;
+                }
+                ranking[nVeiculos].idVeiculo = grupo->idVeiculo;
+                ranking[nVeiculos].velocidadeMedia = velMedia;
+                nVeiculos++;
+            }
+            grupo = grupo->next;
+        }
+    }
+    
+    if (nVeiculos == 0) {
+        printf("Nenhum veículo com velocidade calculada no período especificado.\n");
+        free(ranking);
+        libertarHashTablePassagens(ht);
+        libertarListaPassagens(&passagensFiltradas);
+        return;
+    }
+    
+    // 4. Exibir os resultados com menu de paginação e pesquisa por matrícula
+    int pageSize = 10;
+    int currentPage = 0;
+    char opcao;
+    do {
+        int startIdx = currentPage * pageSize;
+        int endIdx = startIdx + pageSize;
+        if (endIdx > nVeiculos) endIdx = nVeiculos;
+        
+        printf("\n=== Velocidades Médias por Veículo (Página %d) ===\n", currentPage + 1);
+        for (int i = startIdx; i < endIdx; i++) {
+            // Obtemos a matrícula do veículo usando pesquisarCarroPorId
+            NodeCarro* carro = pesquisarCarroPorId(listaCarros, ranking[i].idVeiculo);
+            printf("%2d) Veículo %d | Matrícula: %s | Velocidade Média: %.2f km/h\n",
+                   i + 1,
+                   ranking[i].idVeiculo,
+                   carro ? carro->carro.matricula : "Desconhecida",
+                   ranking[i].velocidadeMedia);
+        }
+        
+        printf("\nOpções:\n");
+        printf("n - Próxima página\n");
+        printf("p - Página anterior\n");
+        printf("b - Pesquisar por matrícula\n");
+        printf("t - Alterar itens por página (atual: %d)\n", pageSize);
+        printf("s - Sair\n");
+        printf("Escolha: ");
+        scanf(" %c", &opcao);
+        
+        if (opcao == 'n' && endIdx < nVeiculos)
+            currentPage++;
+        else if (opcao == 'p' && currentPage > 0)
+            currentPage--;
+        else if (opcao == 'b') {
+            char matriculaBusca[CARRO_MAX_MATRICULA];
+            printf("Digite a matrícula para busca: ");
+            scanf("%s", matriculaBusca);
+            int encontrado = 0;
+            for (int i = 0; i < nVeiculos; i++) {
+                NodeCarro* carro = pesquisarCarroPorId(listaCarros, ranking[i].idVeiculo);
+                if (carro && strcmp(carro->carro.matricula, matriculaBusca) == 0) {
+                    printf("Veículo encontrado: ID %d | Matrícula: %s | Velocidade Média: %.2f km/h\n",
+                           ranking[i].idVeiculo,
+                           carro->carro.matricula,
+                           ranking[i].velocidadeMedia);
+                    encontrado = 1;
+                    break;
+                }
+            }
+            if (!encontrado)
+                printf("Matrícula '%s' não encontrada.\n", matriculaBusca);
+            printf("Pressione Enter para continuar...");
+            while(getchar() != '\n');
+            getchar();
+        } else if (opcao == 't') {
+            printf("Digite o novo número de itens por página: ");
+            scanf("%d", &pageSize);
+            if (pageSize <= 0) pageSize = 10;
+            currentPage = 0;
+        }
+    } while(opcao != 's');
+    
+    // 5. Liberar recursos
+    free(ranking);
+    libertarHashTablePassagens(ht);
+    libertarListaPassagens(&passagensFiltradas);
+}

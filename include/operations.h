@@ -2,6 +2,7 @@
 #define OPERATIONS_H
 
 #include "data.h"
+#include <time.h>
 #include <stdbool.h>
 
 // imprime listas (já existentes)
@@ -41,15 +42,36 @@ int verificacao_periodo(const char *dataHora, const char *inicio, const char *fi
 int veiculo_ja_adicionado(const int lista[], int total, int id);
 void mostrar_veiculos_periodo(Passagem passagens[], int total_passagens, Carro carros[], int total_carros);
 
-int parseTimestampCustom(const char *dataHora, struct tm *tm);
 time_t parseTimestamp(const char *dataHora);
 double obterDistancia(NodeDistancia* lista, int id1, int id2);
-int cmpVeiculoRanking(const void *a, const void *b);
 void rankingVeiculos(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, time_t inicio, time_t fim);
 
 int cmpMarcaRanking(const void *a, const void *b);
 void rankingPorMarca(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, NodeCarro* listaCarros, time_t inicio, time_t fim);
+int cmpVeiculoRanking(const void *a, const void *b);
 
-void listarInfracoes(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, NodeCarro* listaCarros, time_t inicio, time_t fim);
+time_t parseTimestamp(const char *dataHora);
+double obterDistancia(NodeDistancia* lista, int id1, int id2);
+double calcularVelocidadeInfracao(NodePassagem* passagens, NodeDistancia* listaDistancias);
+double calcularVelocidadeMediaPonderada(NodePassagem* passagens, NodeDistancia* listaDistancias);
+NodePassagem* filtrarPassagens(NodePassagem* lista, time_t inicio, time_t fim);
+HashTablePassagens* criarHashTablePassagens(size_t numBuckets);
+void inserirPassagemHash(HashTablePassagens* ht, const Passagem* passagem);
+NodePassagem* pesquisarPassagensParaVeiculo(HashTablePassagens* ht, int idVeiculo);
+void libertarHashTablePassagens(HashTablePassagens* ht);
+void inserirInfracao(TreeNodeInfracao** root, const char* matricula, double velocidadeMedia);
+
+TreeNodeInfracao** armazenarInfracoes(TreeNodeInfracao* arvInfra, int* total);
+void libertarArvoreInfracoes(TreeNodeInfracao* arvInfra);
+
+
+void listarInfracoes(NodeCarro* listaCarros, NodePassagem* listaPassagens,
+                     NodeDistancia* listaDistancias, time_t inicio, time_t fim);
+
+
+void rankingInfraVeiculos(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, NodeCarro* listaCarros, time_t inicio, time_t fim);
+
+void velocidadesMedias(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, NodeCarro* listaCarros, time_t inicio, time_t fim);
+
 
 #endif // OPERATIONS_H

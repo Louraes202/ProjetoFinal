@@ -57,15 +57,14 @@ int main(int argc, char *argv[]) {
   lerDonos("Dados-Portagens-Trab-Pratico/donos.txt", &donos);
   lerSensores("Dados-Portagens-Trab-Pratico/sensores.txt", &sensores);
 
-  // Testar a função listarInfracoes
-  printf("\n=== Teste de Listar Infrações ===\n");
+  // Definir intervalo de tempo para filtrar as infrações (exemplo)
+  char inicioStr[] = "01-01-2000 23:00:00";
+  char fimStr[]    = "31-12-2004 23:59:59";
+  time_t inicio = parseTimestamp(inicioStr);
+  time_t fim    = parseTimestamp(fimStr);
 
-  // Definir intervalo de tempo para o teste
-  time_t inicio = parseTimestamp("31-12-2004 00:00:00");
-  time_t fim = parseTimestamp("31-12-2004 23:59:59");
-
-  // Chamar a função listarInfracoes
-  listarInfracoes(passagens, distancias, carros, inicio, fim);
+  // Testar o ranking de infrações por veículo
+  listarInfracoes(carros, passagens, distancias, inicio, fim);
 
   // Libertar memória
   libertarListaPassagens(&passagens);

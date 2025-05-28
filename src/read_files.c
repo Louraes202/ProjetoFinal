@@ -1,13 +1,9 @@
 #include <stdio.h>      // fopen, fgets, fclose, fprintf, , printf
 #include <stdlib.h>     // malloc, free, atoi
 #include <string.h>     // strtok, strcpy, strncpy, strchr
-#include "read_files.h" // Assume que declara lerDonos e inclui data.h
-#include "data.h"       // Para NodeDono, Dono, e constantes de tamanho
-
-// --- Função Auxiliar Estática ---
-// Esta função só será visível dentro deste ficheiro (read_files.c)
-// Serve para libertar a memória de uma lista de donos.
-// É usada internamente por lerDonos em caso de erro de alocação.
+#include "read_files.h" 
+#include "data.h"      
+#include "operations.h"
 
 /*
  * Liberta toda a memória alocada para uma lista ligada de Donos.
@@ -530,6 +526,7 @@ void lerPassagens(const char* nomeFicheiro, NodePassagem** listaPassagens) {
         no->passagem.idVeiculo    = v;
         strcpy(no->passagem.dataHora, dt);
         no->passagem.tipoRegisto  = t;
+        no->passagem.ts = parseTimestamp(no->passagem.dataHora);
         no->next = NULL;
 
         if (!*listaPassagens) {

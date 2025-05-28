@@ -9,8 +9,12 @@
 #define SENSOR_MAX_LATITUDE 90
 #define SENSOR_MAX_LONGITUDE 180
 #define PASSAGEM_MAX_DATAHORA 30
-#define MAX_DONOS 1000 // s.a.a.
-#define MAX_CARROS 1000 // s.a.a.
+#define MAX_DONOS 100000 // s.a.a.
+#define MAX_CARROS 100000 // s.a.a.
+#define MAX_SENSORES 10000
+
+#define _GNU_SOURCE
+#include <time.h>
 
 /*
  * Representa um Dono (conforme o enunciado: numContribuinte, nome, codPostal).
@@ -109,6 +113,7 @@ typedef struct {
     int  idVeiculo;
     char dataHora[PASSAGEM_MAX_DATAHORA];  // ex.: "12-09-2010_21:35:45.135"
     int  tipoRegisto;   // 0=entrada, 1=saída
+    time_t ts;
 } Passagem;
 
 /*
@@ -130,11 +135,39 @@ typedef struct kmMarca {
     double km;
 } KmMarca;
 
+
+// Estrutura para armazenar infrações numa árvore binária
 typedef struct TreeNodeInfracao {
-    char matricula[CARRO_MAX_MATRICULA];
-    double velocidadeMedia;
-    struct TreeNodeInfracao *left, *right;
+    char matricula[CARRO_MAX_MATRICULA];  // Matrícula do veículo infrator
+    double velocidadeMedia;               // Velocidade média calculada para determinar a infração
+    struct TreeNodeInfracao *left;          // Ponteiro para subárvore esquerda
+    struct TreeNodeInfracao *right;         // Ponteiro para subárvore direita
 } TreeNodeInfracao;
+
+// Estrutura para agrupar passagens por veículo numa tabela hash
+typedef struct PassagemGroup {
+    int idVeiculo;                  // Identificador do veículo
+    NodePassagem* passagens;        // Lista ligada de passagens deste veículo
+    struct PassagemGroup* next;     // Próximo grupo em caso de colisão no hash
+} PassagemGroup;
+
+
+// -- Estruturas para a funçao listarInfracoes
+typedef struct hashTablePassagens {
+    size_t numBuckets;              // Número de buckets na tabela hash
+    PassagemGroup** buckets;        // Array com os buckets (cada bucket é uma lista de PassagemGroup)
+} HashTablePassagens;
+
+typedef struct rankingInfra {
+    int idVeiculo;
+    char matricula[CARRO_MAX_MATRICULA];
+    int infraCount;
+} RankingInfra;
+    
+typedef struct {
+    int idVeiculo;
+    double velocidadeMedia;
+} VelocidadeMedia;
 
 #endif /* DATA_STRUCTURES_H */
 
