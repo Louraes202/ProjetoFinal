@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
   lerSensores("Dados-Portagens-Trab-Pratico/sensores.txt", &sensores);
 
   // Definir intervalo de tempo para filtrar as infrações (exemplo)
-  char inicioStr[] = "01-01-2000 23:00:00";
+  char inicioStr[] = "31-01-2004 23:00:00";
   char fimStr[]    = "31-12-2004 23:59:59";
   time_t inicio = parseTimestamp(inicioStr);
   time_t fim    = parseTimestamp(fimStr);
