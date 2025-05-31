@@ -73,5 +73,16 @@ void rankingInfraVeiculos(NodePassagem* listaPassagens, NodeDistancia* listaDist
 
 void velocidadesMedias(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, NodeCarro* listaCarros, time_t inicio, time_t fim);
 
+void rankingMarcasVelocidade(NodeCarro* listaCarros, NodePassagem* listaPassagens, 
+                             NodeDistancia* listaDistancias, time_t inicio, time_t fim);
+
+void rankingDonosVelocidade(NodeDono* listaDonos, NodeCarro* listaCarros, NodePassagem* listaPassagens, 
+                          NodeDistancia* listaDistancias, time_t inicio, time_t fim);
+
+void exportarDadosCSV(NodeDono* listaDonos, NodeCarro* listaCarros, NodeSensor* listaSensores, 
+                      NodeDistancia* listaDistancias, NodePassagem* listaPassagens);
+
+void exportarDadosXML(NodeDono* listaDonos, NodeCarro* listaCarros, NodeSensor* listaSensores, 
+                      NodeDistancia* listaDistancias, NodePassagem* listaPassagens);
 
 #endif // OPERATIONS_H

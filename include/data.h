@@ -169,5 +169,18 @@ typedef struct {
     double velocidadeMedia;
 } VelocidadeMedia;
 
+typedef struct {
+    char   marca[CARRO_MAX_MARCA];
+    double somaVelocidades; // Soma das velocidades médias dos veículos desta marca
+    int    numVeiculos;     // Nº de veículos da marca que circularam
+} MarcaVelocidade;
+
+typedef struct {
+    int    nifDono;
+    char   nomeDono[DONO_MAX_NOME];
+    double somaVelocidades; // Soma das velocidades médias dos veículos deste dono
+    int    numVeiculos;     // Nº de veículos do dono que circularam
+} DonoVelocidade;
+
 #endif /* DATA_STRUCTURES_H */
 

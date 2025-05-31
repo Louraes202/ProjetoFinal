@@ -7,6 +7,15 @@
 
 #include <ctype.h>
 #include <time.h>
+
+#include <sys/stat.h>
+#include <sys/types.h>
+#ifdef _WIN32
+#include <direct.h> 
+#endif
+
+
+
 #include "operations.h"
 
 // --- Donos ---
@@ -672,18 +681,31 @@ void libertarArvoreInfracoes(TreeNodeInfracao* arvInfra) {
 
 
 // Função de parsing da timesstamp
+// Função de parsing da timesstamp (CORRIGIDA)
 time_t parseTimestamp(const char *dataHora) {
-    struct tm tm;
-    char buffer[21]; // Espaço para os 19 caracteres e '\0'
-    
-    // Copiar somente os primeiros 19 caracteres ("DD-MM-AAAA HH:MM:SS")
-    strncpy(buffer, dataHora, 19);
-    buffer[19] = '\0';
-    
-    if (strptime(buffer, "%d-%m-%Y %H:%M:%S", &tm) == NULL) {
-        fprintf(stderr, "Erro ao analisar a data/hora (usando \"%s\"): %s\n", buffer, dataHora);
-        return -1;
+    struct tm tm = {0}; // Inicializar a struct a zeros
+    char buffer[25]; // Espaço suficiente para a string
+
+    // Copiar a string original para um buffer modificável
+    strncpy(buffer, dataHora, sizeof(buffer) - 1);
+    buffer[sizeof(buffer) - 1] = '\0';
+
+    // Procurar o underscore '_' e substituí-lo por um espaço ' '
+    char *underscore_pos = strchr(buffer, '_');
+    if (underscore_pos) {
+        *underscore_pos = ' ';
     }
+
+    // Usar strptime no buffer modificado, lendo apenas a parte sem milissegundos
+    if (strptime(buffer, "%d-%m-%Y %H:%M:%S", &tm) == NULL) {
+        // Se ainda assim falhar, pode ser um formato inesperado.
+        // fprintf(stderr, "Aviso: Nao foi possivel analisar a data/hora: %s\n", dataHora);
+        return -1; // Retorna -1 em caso de erro
+    }
+
+    // Assegurar que o DST (Daylight Saving Time) é determinado automaticamente
+    tm.tm_isdst = -1; 
+    
     return mktime(&tm);
 }
 
@@ -1528,4 +1550,470 @@ void velocidadesMedias(NodePassagem* listaPassagens, NodeDistancia* listaDistanc
     free(ranking);
     libertarHashTablePassagens(ht);
     libertarListaPassagens(&passagensFiltradas);
+}
+
+// Função de comparação para qsort (ordem decrescente de velocidade média)
+static int cmpMarcaVelocidade(const void* a, const void* b) {
+    MarcaVelocidade* marcaA = (MarcaVelocidade*)a;
+    MarcaVelocidade* marcaB = (MarcaVelocidade*)b;
+
+    // Calcular a velocidade média final para cada marca antes de comparar
+    double mediaA = (marcaA->numVeiculos > 0) ? (marcaA->somaVelocidades / marcaA->numVeiculos) : 0;
+    double mediaB = (marcaB->numVeiculos > 0) ? (marcaB->somaVelocidades / marcaB->numVeiculos) : 0;
+
+    if (mediaB > mediaA) return 1;
+    if (mediaB < mediaA) return -1;
+    return 0;
+}
+
+/**
+ * @brief Requisito 13: Qual a marca dos carros que circulam a maior velocidade média?
+ * Calcula e exibe um ranking de marcas de veículos com base na sua velocidade média 
+ * num determinado período.
+ */
+void rankingMarcasVelocidade(NodeCarro* listaCarros, NodePassagem* listaPassagens, NodeDistancia* listaDistancias, time_t inicio, time_t fim) {
+    // --- Módulo 1: Filtrar passagens no intervalo de tempo ---
+    NodePassagem* passagensFiltradas = filtrarPassagens(listaPassagens, inicio, fim);
+    if (!passagensFiltradas) {
+        printf("Nenhuma passagem encontrada no intervalo especificado.\n");
+        return;
+    }
+
+    // --- Módulo 2: Agrupar passagens por veículo numa hash table ---
+    HashTablePassagens* ht = criarHashTablePassagens(100); // 100 buckets, ajuste se necessário
+    for (NodePassagem* p = passagensFiltradas; p; p = p->next) {
+        inserirPassagemHash(ht, &p->passagem);
+    }
+    
+    // --- Módulo 3: Calcular velocidade por veículo e agregar por marca ---
+    int capacidadeMarcas = 50; // Capacidade inicial para o array de marcas
+    MarcaVelocidade* rankingMarcas = malloc(sizeof(MarcaVelocidade) * capacidadeMarcas);
+    int nMarcas = 0;
+
+    for (size_t i = 0; i < ht->numBuckets; i++) {
+        for (PassagemGroup* g = ht->buckets[i]; g; g = g->next) {
+            
+            // Ordenar passagens do veículo e calcular sua velocidade média
+            g->passagens = mergeSortPassagens(g->passagens);
+            double velMediaVeiculo = calcularVelocidadeMediaPonderada(g->passagens, listaDistancias);
+
+            if (velMediaVeiculo > 0) {
+                // Obter a marca do veículo
+                NodeCarro* carro = pesquisarCarroPorId(listaCarros, g->idVeiculo);
+                if (!carro) continue; // Pula se o carro não for encontrado
+
+                // Procurar se a marca já existe no nosso array de ranking
+                int idxMarca = -1;
+                for (int j = 0; j < nMarcas; j++) {
+                    if (strcmp(rankingMarcas[j].marca, carro->carro.marca) == 0) {
+                        idxMarca = j;
+                        break;
+                    }
+                }
+
+                if (idxMarca != -1) { // Marca já existe, atualiza os valores
+                    rankingMarcas[idxMarca].somaVelocidades += velMediaVeiculo;
+                    rankingMarcas[idxMarca].numVeiculos++;
+                } else { // Nova marca, adiciona ao array
+                    if (nMarcas >= capacidadeMarcas) { // Realocar se necessário
+                        capacidadeMarcas *= 2;
+                        rankingMarcas = realloc(rankingMarcas, sizeof(MarcaVelocidade) * capacidadeMarcas);
+                    }
+                    strncpy(rankingMarcas[nMarcas].marca, carro->carro.marca, CARRO_MAX_MARCA);
+                    rankingMarcas[nMarcas].somaVelocidades = velMediaVeiculo;
+                    rankingMarcas[nMarcas].numVeiculos = 1;
+                    nMarcas++;
+                }
+            }
+        }
+    }
+
+    // --- Módulo 4: Ordenar o ranking de marcas ---
+    if (nMarcas > 0) {
+        qsort(rankingMarcas, nMarcas, sizeof(MarcaVelocidade), cmpMarcaVelocidade);
+    }
+
+    // --- Módulo 5: Exibir os resultados ---
+    printf("\n=== Ranking de Marcas por Velocidade Média ===\n");
+    if (nMarcas == 0) {
+        printf("Não foi possível calcular a velocidade média para nenhuma marca no período indicado.\n");
+    } else {
+        for (int i = 0; i < nMarcas; i++) {
+            double velMediaFinal = rankingMarcas[i].somaVelocidades / rankingMarcas[i].numVeiculos;
+            printf("%2d) Marca: %-15s | Velocidade Média: %.2f km/h  (%d veículos)\n",
+                   i + 1,
+                   rankingMarcas[i].marca,
+                   velMediaFinal,
+                   rankingMarcas[i].numVeiculos);
+        }
+    }
+
+    // --- Módulo 6: Libertar memória ---
+    free(rankingMarcas);
+    libertarHashTablePassagens(ht);
+    libertarListaPassagens(&passagensFiltradas);
+}
+
+// --- Função auxiliar para pesquisar um Dono por NIF ---
+static NodeDono* pesquisarDonoPorNIF(NodeDono* listaDonos, int nif) {
+    for (NodeDono* p = listaDonos; p; p = p->next) {
+        if (p->dono.numeroContribuinte == nif) {
+            return p;
+        }
+    }
+    return NULL;
+}
+
+// --- Função de comparação para qsort (por velocidade média do dono) ---
+static int cmpDonoVelocidade(const void* a, const void* b) {
+    DonoVelocidade* donoA = (DonoVelocidade*)a;
+    DonoVelocidade* donoB = (DonoVelocidade*)b;
+
+    double mediaA = (donoA->numVeiculos > 0) ? (donoA->somaVelocidades / donoA->numVeiculos) : 0;
+    double mediaB = (donoB->numVeiculos > 0) ? (donoB->somaVelocidades / donoB->numVeiculos) : 0;
+
+    if (mediaB > mediaA) return 1;
+    if (mediaB < mediaA) return -1;
+    return 0;
+}
+
+/**
+ * @brief Requisito 14: Qual o condutor (dono) que circula a maior velocidade média?
+ * Calcula e exibe um ranking de donos com base na velocidade média dos seus veículos.
+ */
+void rankingDonosVelocidade(NodeDono* listaDonos, NodeCarro* listaCarros, NodePassagem* listaPassagens, 
+                          NodeDistancia* listaDistancias, time_t inicio, time_t fim) {
+    
+    // Módulo 1: Filtrar e agrupar passagens (igual à função anterior)
+    NodePassagem* passagensFiltradas = filtrarPassagens(listaPassagens, inicio, fim);
+    if (!passagensFiltradas) {
+        printf("Nenhuma passagem encontrada no intervalo especificado.\n");
+        return;
+    }
+    HashTablePassagens* ht = criarHashTablePassagens(100);
+    for (NodePassagem* p = passagensFiltradas; p; p = p->next) {
+        inserirPassagemHash(ht, &p->passagem);
+    }
+    
+    // Módulo 2: Calcular velocidade por veículo e agregar por DONO
+    int capacidadeDonos = 500; // Capacidade inicial para o array de donos
+    DonoVelocidade* rankingDonos = malloc(sizeof(DonoVelocidade) * capacidadeDonos);
+    int nDonos = 0;
+
+    for (size_t i = 0; i < ht->numBuckets; i++) {
+        for (PassagemGroup* g = ht->buckets[i]; g; g = g->next) {
+            
+            g->passagens = mergeSortPassagens(g->passagens);
+            double velMediaVeiculo = calcularVelocidadeMediaPonderada(g->passagens, listaDistancias);
+
+            if (velMediaVeiculo > 0) {
+                // Obter o NIF do dono do veículo
+                NodeCarro* carro = pesquisarCarroPorId(listaCarros, g->idVeiculo);
+                if (!carro) continue;
+                int nifDono = carro->carro.donoContribuinte;
+
+                // Procurar se o dono já existe no nosso array de ranking
+                int idxDono = -1;
+                for (int j = 0; j < nDonos; j++) {
+                    if (rankingDonos[j].nifDono == nifDono) {
+                        idxDono = j;
+                        break;
+                    }
+                }
+
+                if (idxDono != -1) { // Dono já existe, atualiza os valores
+                    rankingDonos[idxDono].somaVelocidades += velMediaVeiculo;
+                    rankingDonos[idxDono].numVeiculos++;
+                } else { // Novo dono, adiciona ao array
+                    NodeDono* dono = pesquisarDonoPorNIF(listaDonos, nifDono);
+                    if (!dono) continue; // Pula se não encontrar os dados do dono
+
+                    if (nDonos >= capacidadeDonos) { // Realocar se necessário
+                        capacidadeDonos *= 2;
+                        rankingDonos = realloc(rankingDonos, sizeof(DonoVelocidade) * capacidadeDonos);
+                    }
+                    rankingDonos[nDonos].nifDono = nifDono;
+                    strncpy(rankingDonos[nDonos].nomeDono, dono->dono.nome, DONO_MAX_NOME);
+                    rankingDonos[nDonos].somaVelocidades = velMediaVeiculo;
+                    rankingDonos[nDonos].numVeiculos = 1;
+                    nDonos++;
+                }
+            }
+        }
+    }
+
+    // Módulo 3: Ordenar o ranking de donos
+    if (nDonos > 0) {
+        qsort(rankingDonos, nDonos, sizeof(DonoVelocidade), cmpDonoVelocidade);
+    }
+
+    // Módulo 4: Exibir os resultados
+    printf("\n=== Ranking de Donos por Velocidade Média ===\n");
+    if (nDonos == 0) {
+        printf("Não foi possível calcular a velocidade média para nenhum dono no período indicado.\n");
+    } else {
+        int limite = nDonos < 20 ? nDonos : 20; // Mostra o Top 20 para não inundar o ecrã
+        printf("(A apresentar os primeiros %d resultados)\n", limite);
+        for (int i = 0; i < limite; i++) {
+            double velMediaFinal = rankingDonos[i].somaVelocidades / rankingDonos[i].numVeiculos;
+            printf("%2d) Dono: %-25s (NIF: %d) | Vel. Média: %.2f km/h (%d veículos)\n",
+                   i + 1,
+                   rankingDonos[i].nomeDono,
+                   rankingDonos[i].nifDono,
+                   velMediaFinal,
+                   rankingDonos[i].numVeiculos);
+        }
+    }
+
+    // Módulo 5: Libertar memória
+    free(rankingDonos);
+    libertarHashTablePassagens(ht);
+    libertarListaPassagens(&passagensFiltradas);
+}
+
+// --- Funções Auxiliares para a Exportação CSV ---
+
+// --- Funções Auxiliares para a Exportação CSV ---
+
+static void exportarDonosCSV(NodeDono* head, const char* filepath) {
+    FILE* fp = fopen(filepath, "w");
+    if (!fp) {
+        fprintf(stderr, "Erro ao criar o ficheiro %s\n", filepath);
+        return;
+    }
+    // Header com uma coluna para cada variável da struct Dono
+    fprintf(fp, "NumeroContribuinte,Nome,CodigoPostal\n");
+    for (NodeDono* p = head; p; p = p->next) {
+        fprintf(fp, "%d,\"%s\",\"%s\"\n", 
+                p->dono.numeroContribuinte, 
+                p->dono.nome, 
+                p->dono.codigoPostal);
+    }
+    fclose(fp);
+    printf("Ficheiro %s exportado com sucesso.\n", filepath);
+}
+
+static void exportarCarrosCSV(NodeCarro* head, const char* filepath) {
+    FILE* fp = fopen(filepath, "w");
+    if (!fp) {
+        fprintf(stderr, "Erro ao criar o ficheiro %s\n", filepath);
+        return;
+    }
+    // Header com uma coluna para cada variável da struct Carro
+    fprintf(fp, "Matricula,Marca,Modelo,Ano,DonoContribuinte,IdVeiculo\n");
+    for (NodeCarro* p = head; p; p = p->next) {
+        fprintf(fp, "\"%s\",\"%s\",\"%s\",%d,%d,%d\n",
+                p->carro.matricula,
+                p->carro.marca,
+                p->carro.modelo,
+                p->carro.ano,
+                p->carro.donoContribuinte,
+                p->carro.idVeiculo);
+    }
+    fclose(fp);
+    printf("Ficheiro %s exportado com sucesso.\n", filepath);
+}
+
+static void exportarSensoresCSV(NodeSensor* head, const char* filepath) {
+    FILE* fp = fopen(filepath, "w");
+    if (!fp) {
+        fprintf(stderr, "Erro ao criar o ficheiro %s\n", filepath);
+        return;
+    }
+    // Header com uma coluna para cada variável da struct Sensor
+    fprintf(fp, "IdSensor,Designacao,Latitude,Longitude\n");
+    for (NodeSensor* p = head; p; p = p->next) {
+        fprintf(fp, "%d,\"%s\",\"%s\",\"%s\"\n",
+                p->sensor.idSensor,
+                p->sensor.designacao,
+                p->sensor.latitude,
+                p->sensor.longitude);
+    }
+    fclose(fp);
+    printf("Ficheiro %s exportado com sucesso.\n", filepath);
+}
+
+static void exportarDistanciasCSV(NodeDistancia* head, const char* filepath) {
+    FILE* fp = fopen(filepath, "w");
+    if (!fp) {
+        fprintf(stderr, "Erro ao criar o ficheiro %s\n", filepath);
+        return;
+    }
+    // Header com uma coluna para cada variável da struct Distancia
+    fprintf(fp, "IdSensor1,IdSensor2,Distancia\n");
+    for (NodeDistancia* p = head; p; p = p->next) {
+        fprintf(fp, "%d,%d,%.2f\n",
+                p->distancia.idSensor1,
+                p->distancia.idSensor2,
+                p->distancia.distancia);
+    }
+    fclose(fp);
+    printf("Ficheiro %s exportado com sucesso.\n", filepath);
+}
+
+static void exportarPassagensCSV(NodePassagem* head, const char* filepath) {
+    FILE* fp = fopen(filepath, "w");
+    if (!fp) {
+        fprintf(stderr, "Erro ao criar o ficheiro %s\n", filepath);
+        return;
+    }
+    // Header com uma coluna para cada variável da struct Passagem
+    fprintf(fp, "IdSensor,IdVeiculo,DataHora,TipoRegisto\n");
+    for (NodePassagem* p = head; p; p = p->next) {
+        fprintf(fp, "%d,%d,\"%s\",%d\n",
+                p->passagem.idSensor,
+                p->passagem.idVeiculo,
+                p->passagem.dataHora,
+                p->passagem.tipoRegisto);
+    }
+    fclose(fp);
+    printf("Ficheiro %s exportado com sucesso.\n", filepath);
+}
+
+
+/**
+ * @brief Requisito 17: Exporta todos os dados carregados para ficheiros CSV.
+ * Cria uma pasta 'Export-CSV' e guarda um ficheiro para cada tipo de entidade.
+ */
+void exportarDadosCSV(NodeDono* listaDonos, NodeCarro* listaCarros, NodeSensor* listaSensores, 
+                      NodeDistancia* listaDistancias, NodePassagem* listaPassagens) {
+    
+    const char* dir = "Export-CSV";
+#ifdef _WIN32
+    _mkdir(dir);
+#else
+    mkdir(dir, 0777);
+#endif
+
+    printf("\n--- A exportar dados para formato CSV ---\n");
+
+    exportarDonosCSV(listaDonos, "Export-CSV/donos.csv");
+    exportarCarrosCSV(listaCarros, "Export-CSV/carros.csv");
+    exportarSensoresCSV(listaSensores, "Export-CSV/sensores.csv");
+    exportarDistanciasCSV(listaDistancias, "Export-CSV/distancias.csv");
+    exportarPassagensCSV(listaPassagens, "Export-CSV/passagens.csv");
+    
+    printf("--- Exportação concluída. ---\n");
+}
+
+/**
+ * @brief Função auxiliar para escrever uma string num ficheiro XML,
+ * tratando os caracteres especiais (&, <, >, ", ').
+ */
+static void escreverStringXML(FILE* fp, const char* str) {
+    while (*str) {
+        switch (*str) {
+            case '&':  fprintf(fp, "&amp;"); break;
+            case '<':  fprintf(fp, "&lt;"); break;
+            case '>':  fprintf(fp, "&gt;"); break;
+            case '\"': fprintf(fp, "&quot;"); break;
+            case '\'': fprintf(fp, "&apos;"); break;
+            default:   fputc(*str, fp); break;
+        }
+        str++;
+    }
+}
+
+/**
+ * @brief Requisito 18: Exporta todos os dados carregados para um único ficheiro XML.
+ */
+void exportarDadosXML(NodeDono* listaDonos, NodeCarro* listaCarros, NodeSensor* listaSensores, 
+                      NodeDistancia* listaDistancias, NodePassagem* listaPassagens) {
+
+    const char* filepath = "export_completo.xml";
+    FILE* fp = fopen(filepath, "w");
+    if (!fp) {
+        fprintf(stderr, "Erro ao criar o ficheiro %s\n", filepath);
+        return;
+    }
+
+    printf("\n--- A exportar dados para formato XML ---\n");
+
+    // Declaração XML e elemento-raiz
+    fprintf(fp, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+    fprintf(fp, "<baseDeDados>\n");
+
+    // --- Exportar Donos ---
+    fprintf(fp, "\t<listaDonos>\n");
+    for (NodeDono* p = listaDonos; p; p = p->next) {
+        fprintf(fp, "\t\t<dono>\n");
+        fprintf(fp, "\t\t\t<numeroContribuinte>%d</numeroContribuinte>\n", p->dono.numeroContribuinte);
+        fprintf(fp, "\t\t\t<nome>");
+        escreverStringXML(fp, p->dono.nome);
+        fprintf(fp, "</nome>\n");
+        fprintf(fp, "\t\t\t<codigoPostal>");
+        escreverStringXML(fp, p->dono.codigoPostal);
+        fprintf(fp, "</codigoPostal>\n");
+        fprintf(fp, "\t\t</dono>\n");
+    }
+    fprintf(fp, "\t</listaDonos>\n\n");
+
+    // --- Exportar Carros ---
+    fprintf(fp, "\t<listaCarros>\n");
+    for (NodeCarro* p = listaCarros; p; p = p->next) {
+        fprintf(fp, "\t\t<carro>\n");
+        fprintf(fp, "\t\t\t<matricula>");
+        escreverStringXML(fp, p->carro.matricula);
+        fprintf(fp, "</matricula>\n");
+        fprintf(fp, "\t\t\t<marca>");
+        escreverStringXML(fp, p->carro.marca);
+        fprintf(fp, "</marca>\n");
+        fprintf(fp, "\t\t\t<modelo>");
+        escreverStringXML(fp, p->carro.modelo);
+        fprintf(fp, "</modelo>\n");
+        fprintf(fp, "\t\t\t<ano>%d</ano>\n", p->carro.ano);
+        fprintf(fp, "\t\t\t<donoContribuinte>%d</donoContribuinte>\n", p->carro.donoContribuinte);
+        fprintf(fp, "\t\t\t<idVeiculo>%d</idVeiculo>\n", p->carro.idVeiculo);
+        fprintf(fp, "\t\t</carro>\n");
+    }
+    fprintf(fp, "\t</listaCarros>\n\n");
+
+    // --- Exportar Sensores ---
+    fprintf(fp, "\t<listaSensores>\n");
+    for (NodeSensor* p = listaSensores; p; p = p->next) {
+        fprintf(fp, "\t\t<sensor>\n");
+        fprintf(fp, "\t\t\t<idSensor>%d</idSensor>\n", p->sensor.idSensor);
+        fprintf(fp, "\t\t\t<designacao>");
+        escreverStringXML(fp, p->sensor.designacao);
+        fprintf(fp, "</designacao>\n");
+        fprintf(fp, "\t\t\t<latitude>");
+        escreverStringXML(fp, p->sensor.latitude);
+        fprintf(fp, "</latitude>\n");
+        fprintf(fp, "\t\t\t<longitude>");
+        escreverStringXML(fp, p->sensor.longitude);
+        fprintf(fp, "</longitude>\n");
+        fprintf(fp, "\t\t</sensor>\n");
+    }
+    fprintf(fp, "\t</listaSensores>\n\n");
+
+    // --- Exportar Distâncias ---
+    fprintf(fp, "\t<listaDistancias>\n");
+    for (NodeDistancia* p = listaDistancias; p; p = p->next) {
+        fprintf(fp, "\t\t<distancia>\n");
+        fprintf(fp, "\t\t\t<idSensor1>%d</idSensor1>\n", p->distancia.idSensor1);
+        fprintf(fp, "\t\t\t<idSensor2>%d</idSensor2>\n", p->distancia.idSensor2);
+        fprintf(fp, "\t\t\t<distancia>%.2f</distancia>\n", p->distancia.distancia);
+        fprintf(fp, "\t\t</distancia>\n");
+    }
+    fprintf(fp, "\t</listaDistancias>\n\n");
+
+    // --- Exportar Passagens ---
+    fprintf(fp, "\t<listaPassagens>\n");
+    for (NodePassagem* p = listaPassagens; p; p = p->next) {
+        fprintf(fp, "\t\t<passagem>\n");
+        fprintf(fp, "\t\t\t<idSensor>%d</idSensor>\n", p->passagem.idSensor);
+        fprintf(fp, "\t\t\t<idVeiculo>%d</idVeiculo>\n", p->passagem.idVeiculo);
+        fprintf(fp, "\t\t\t<dataHora>");
+        escreverStringXML(fp, p->passagem.dataHora);
+        fprintf(fp, "</dataHora>\n");
+        fprintf(fp, "\t\t\t<tipoRegisto>%d</tipoRegisto>\n", p->passagem.tipoRegisto);
+        fprintf(fp, "\t\t</passagem>\n");
+    }
+    fprintf(fp, "\t</listaPassagens>\n");
+
+    // Fechar o elemento-raiz
+    fprintf(fp, "</baseDeDados>\n");
+    fclose(fp);
+
+    printf("Ficheiro XML exportado com sucesso em: %s\n", filepath);
 }

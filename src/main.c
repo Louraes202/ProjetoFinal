@@ -58,13 +58,13 @@ int main(int argc, char *argv[]) {
   lerSensores("Dados-Portagens-Trab-Pratico/sensores.txt", &sensores);
 
   // Definir intervalo de tempo para filtrar as infrações (exemplo)
-  char inicioStr[] = "31-01-2004 23:00:00";
-  char fimStr[]    = "31-12-2004 23:59:59";
+  char inicioStr[] = "31-01-2003 23:00:00";
+  char fimStr[]    = "31-12-2020 23:59:59";
   time_t inicio = parseTimestamp(inicioStr);
   time_t fim    = parseTimestamp(fimStr);
 
-  // Testar o ranking de infrações por veículo
-  listarInfracoes(carros, passagens, distancias, inicio, fim);
+  // Testar a nova função do Requisito 18
+  exportarDadosXML(donos, carros, sensores, distancias, passagens);
 
   // Libertar memória
   libertarListaPassagens(&passagens);
@@ -73,6 +73,8 @@ int main(int argc, char *argv[]) {
   libertarListaSensores(&sensores);
   libertarListaDonos(&donos);
 
+
+  
   return 0;
 
 }
