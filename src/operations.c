@@ -18,30 +18,215 @@
 
 #include "operations.h"
 
-// --- Donos ---
+// --- Funções Auxiliares para o Menu ---
+
 /**
- * @brief Esta função percorre a lista de donos e imprime os dados de cada um deles no terminal.
- * Caso a lista esteja vazia, uma mensagem apropriada será exibida.
- * 
- * @param lista 
+ * @brief Limpa o buffer de input (stdin) para evitar problemas com scanf.
  */
-void imprimirListaDonos(NodeDono* lista) {
-    printf("\n--- Lista de Donos ---\n");
-    if (!lista) {
-        printf("Nenhum dono carregado.\n");
-        return;
-    }
-    int i = 1;
-    for (NodeDono* p = lista; p; p = p->next, i++) { // ALTERAR: ordenar implicitamente por nome ou nif (parametro)
-        printf("%2d) NIF=%d | Nome=\"%s\" | CP=%s\n",
-               i,
-               p->dono.numeroContribuinte,
-               p->dono.nome,
-               p->dono.codigoPostal);
+void limparBufferInput() {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+}
+
+/**
+ * @brief Pede ao utilizador para pressionar Enter para continuar.
+ */
+void esperarEnter() {
+    printf("\nPressione Enter para continuar...");
+    limparBufferInput();
+}
+
+/**
+ * @brief Obtém e valida o período de tempo (início e fim) do utilizador.
+ */
+void obterPeriodoTempo(time_t* inicio, time_t* fim) {
+    char inicioStr[30], fimStr[30];
+    printf("Introduza a data de INICIO (DD-MM-AAAA HH:MM:SS): ");
+    scanf(" %29[^\n]", inicioStr);
+    limparBufferInput();
+
+    printf("Introduza a data de FIM (DD-MM-AAAA HH:MM:SS): ");
+    scanf(" %29[^\n]", fimStr);
+    limparBufferInput();
+
+    *inicio = parseTimestamp(inicioStr);
+    *fim = parseTimestamp(fimStr);
+
+    if (*inicio == -1 || *fim == -1) {
+        printf("\nFormato de data invalido. A operacao pode falhar.\n");
     }
 }
 
+/**
+ * @brief Motor de paginação genérico para qualquer tipo de lista.
+ * * @param lista Apontador genérico para o nó inicial da lista.
+ * @param totalItems Número total de itens na lista.
+ * @param tamanhoItem Tamanho de cada nó da lista (sizeof).
+ * @param obterNext Ponteiro para uma função que retorna o próximo nó da lista.
+ * @param imprimirItem Ponteiro para uma função que imprime um item da lista.
+ * @param pesquisarItem Ponteiro para uma função que pesquisa na lista.
+ * @param titulo O título a ser exibido no cabeçalho.
+ */
+void paginarListaGenerica(void* lista, int totalItems, size_t tamanhoItem, 
+                          void* (*obterNext)(void*), 
+                          void (*imprimirItem)(void*, int),
+                          int (*pesquisarItem)(void*, const char*), 
+                          const char* titulo) {
+
+    if (totalItems == 0) {
+        printf("\n%s\n", titulo);
+        printf("Nenhum item para exibir.\n");
+        return;
+    }
+
+    // 1. Converter a lista ligada para um array de ponteiros para acesso rápido
+    void** arrayDePonteiros = malloc(totalItems * sizeof(void*));
+    if (!arrayDePonteiros) {
+        printf("Erro ao alocar memoria para paginacao.\n");
+        return;
+    }
+    void* p = lista;
+    for (int i = 0; i < totalItems; i++) {
+        arrayDePonteiros[i] = p;
+        p = obterNext(p);
+    }
+
+    int pageSize = 10;
+    int currentPage = 0;
+    int totalPages = (totalItems + pageSize - 1) / pageSize;
+    char opcao;
+
+    do {
+    #ifdef _WIN32
+        system("cls");
+    #else
+        system("clear");
+    #endif
+
+        printf("\n%s (Pagina %d de %d)\n", titulo, currentPage + 1, totalPages);
+        printf("--------------------------------------------------------\n");
+
+        int startIdx = currentPage * pageSize;
+        int endIdx = startIdx + pageSize;
+        if (endIdx > totalItems) endIdx = totalItems;
+
+        for (int i = startIdx; i < endIdx; i++) {
+            imprimirItem(arrayDePonteiros[i], i + 1);
+        }
+
+        printf("--------------------------------------------------------\n");
+        printf("Total de Itens: %d | Itens por pagina: %d\n", totalItems, pageSize);
+        printf("Opcoes: [s]eguinte, [a]nterior, [p]esquisar, [t]amanho, [e]xit\n");
+        printf("Escolha: ");
+        
+        scanf(" %c", &opcao);
+        limparBufferInput();
+
+        switch (opcao) {
+            case 's': if (currentPage < totalPages - 1) currentPage++; break;
+            case 'a': if (currentPage > 0) currentPage--; break;
+            case 't':
+                printf("Novo numero de itens por pagina: ");
+                scanf("%d", &pageSize);
+                limparBufferInput();
+                if (pageSize <= 0) pageSize = 10;
+                totalPages = (totalItems + pageSize - 1) / pageSize;
+                currentPage = 0;
+                break;
+            case 'p':
+                pesquisarItem(lista, NULL); // A função de pesquisa específica lidará com o input
+                esperarEnter();
+                break;
+        }
+    } while (opcao != 'e');
+
+    free(arrayDePonteiros);
+}
+
+// --- Donos ---
+
+int contarDonos(NodeDono* lista) {
+    int count = 0;
+    for (NodeDono* p = lista; p; p = p->next) count++;
+    return count;
+}
+
+void* obterNextDono(void* no) { return ((NodeDono*)no)->next; }
+
+void imprimirItemDono(void* item, int indice) {
+    NodeDono* p = (NodeDono*)item;
+    printf("%4d) NIF=%-9d | Nome=\"%s\" | CP=%s\n",
+           indice, p->dono.numeroContribuinte, p->dono.nome, p->dono.codigoPostal);
+}
+
+int pesquisarDono(void* lista, const char* termo) {
+    char buffer[20];
+    int nifBusca;
+    printf("\nDigite o NIF a procurar: ");
+    lerString("", buffer, sizeof(buffer));
+    if (sscanf(buffer, "%d", &nifBusca) != 1) {
+        printf("NIF invalido.\n");
+        return 0;
+    }
+    
+    int i = 0;
+    for (NodeDono* p = (NodeDono*)lista; p; p = p->next, i++) {
+        if (p->dono.numeroContribuinte == nifBusca) {
+            printf("--> Encontrado no indice %d:\n", i + 1);
+            imprimirItemDono(p, i + 1);
+            return 1;
+        }
+    }
+    printf("Nenhum dono encontrado com o NIF %d.\n", nifBusca);
+    return 0;
+}
+
+
+void imprimirListaDonos(NodeDono* lista) {
+    paginarListaGenerica(
+        lista,
+        contarDonos(lista),
+        sizeof(NodeDono),
+        obterNextDono,
+        imprimirItemDono,
+        pesquisarDono,
+        "--- Lista de Donos ---"
+    );
+}
+
 // --- Carros ---
+
+// --- Funções auxiliares para a paginação de CARROS ---
+
+int contarCarros(NodeCarro* lista) {
+    int count = 0;
+    for (NodeCarro* p = lista; p; p = p->next) count++;
+    return count;
+}
+
+void* obterNextCarro(void* no) { return ((NodeCarro*)no)->next; }
+
+void imprimirItemCarro(void* item, int indice) {
+    NodeCarro* p = (NodeCarro*)item;
+    printf("%4d) Mat=%-9s | Marca=%-15s | Modelo=%-15s | Ano=%d | DonoNIF=%d\n",
+           indice, p->carro.matricula, p->carro.marca, p->carro.modelo, p->carro.ano, p->carro.donoContribuinte);
+}
+
+int pesquisarCarro(void* lista, const char* termo) {
+    char matriculaBusca[CARRO_MAX_MATRICULA];
+    lerString("\nDigite a matricula a procurar: ", matriculaBusca, sizeof(matriculaBusca));
+    
+    int i = 0;
+    for (NodeCarro* p = (NodeCarro*)lista; p; p = p->next, i++) {
+        if (strcmp(p->carro.matricula, matriculaBusca) == 0) {
+            printf("--> Encontrado no indice %d:\n", i + 1);
+            imprimirItemCarro(p, i + 1);
+            return 1;
+        }
+    }
+    printf("Nenhum carro encontrado com a matricula %s.\n", matriculaBusca);
+    return 0;
+}
 
 /**
  * @brief Esta função percorre a lista de carros e imprime os dados de cada carro no terminal.
@@ -50,74 +235,208 @@ void imprimirListaDonos(NodeDono* lista) {
  * @param lista 
  */
 void imprimirListaCarros(NodeCarro* lista) {
-    printf("\n--- Lista de Carros ---\n");
-    if (!lista) {
-        printf("Nenhum carro carregado.\n");
-        return;
-    }
-    int i = 1;
-    for (NodeCarro* p = lista; p; p = p->next, i++) {
-        printf("%2d) Mat=%s | Marca=%s | Modelo=%s | Ano=%d | DonoNIF=%d | ID=%d\n",
-               i,
-               p->carro.matricula,
-               p->carro.marca,
-               p->carro.modelo,
-               p->carro.ano,
-               p->carro.donoContribuinte,
-               p->carro.idVeiculo);
-    }
+    paginarListaGenerica(
+        lista,
+        contarCarros(lista),
+        sizeof(NodeCarro),
+        obterNextCarro,
+        imprimirItemCarro,
+        pesquisarCarro,
+        "--- Lista de Carros ---"
+    );
 }
 
 // --- Sensores ---
 
+// --- Funções auxiliares para a paginação de SENSORES ---
+
+int contarSensores(NodeSensor* lista) {
+    int count = 0;
+    for (NodeSensor* p = lista; p; p = p->next) count++;
+    return count;
+}
+
+void* obterNextSensor(void* no) { 
+    return ((NodeSensor*)no)->next; 
+}
+
+void imprimirItemSensor(void* item, int indice) {
+    NodeSensor* p = (NodeSensor*)item;
+    printf("%4d) ID=%-3d | Designacao: %-25s | Lat: %-20s | Lon: %s\n",
+           indice, 
+           p->sensor.idSensor,
+           p->sensor.designacao,
+           p->sensor.latitude,
+           p->sensor.longitude);
+}
+
+int pesquisarSensor(void* lista, const char* termo) {
+    char buffer[20];
+    int idBusca;
+    printf("\nDigite o ID do Sensor a procurar: ");
+    lerString("", buffer, sizeof(buffer)); // Reutiliza a função lerString que criámos antes
+    if (sscanf(buffer, "%d", &idBusca) != 1) {
+        printf("ID invalido.\n");
+        return 0;
+    }
+    
+    int i = 0;
+    int encontrados = 0;
+    for (NodeSensor* p = (NodeSensor*)lista; p; p = p->next, i++) {
+        if (p->sensor.idSensor == idBusca) {
+            if (encontrados == 0) printf("--> Sensor(es) encontrado(s):\n");
+            imprimirItemSensor(p, i + 1);
+            encontrados++;
+        }
+    }
+    if (encontrados == 0) {
+        printf("Nenhum sensor encontrado com o ID %d.\n", idBusca);
+    }
+    return encontrados > 0;
+}
+
 /**
  * @brief  A função imprime os pares de sensores e a distância entre eles. 
- * Caso a lista esteja vazia, informa o usuário.
  * 
  * @param lista 
  */
 void imprimirListaSensores(NodeSensor* lista) {
-    printf("\n--- Lista de Sensores ---\n");
-    if (!lista) {
-        printf("Nenhum sensor carregado.\n");
-        return;
-    }
-    int i = 1;
-    for (NodeSensor* p = lista; p; p = p->next, i++) {
-        printf("%2d) ID=%d | %s | Lat=%s | Lon=%s\n",
-               i,
-               p->sensor.idSensor,
-               p->sensor.designacao,
-               p->sensor.latitude,
-               p->sensor.longitude);
-    }
+    paginarListaGenerica(
+        lista,
+        contarSensores(lista),
+        sizeof(NodeSensor),
+        obterNextSensor,
+        imprimirItemSensor,
+        pesquisarSensor,
+        "--- Lista de Sensores ---"
+    );
 }
 
 // --- Distâncias ---
 
+// --- Funções auxiliares para a paginação de DISTANCIAS ---
+
+int contarDistancias(NodeDistancia* lista) {
+    int count = 0;
+    for (NodeDistancia* p = lista; p; p = p->next) count++;
+    return count;
+}
+
+void* obterNextDistancia(void* no) { 
+    return ((NodeDistancia*)no)->next; 
+}
+
+void imprimirItemDistancia(void* item, int indice) {
+    NodeDistancia* p = (NodeDistancia*)item;
+    printf("%4d) Sensor %d <-> Sensor %d : %.3f km\n",
+           indice,
+           p->distancia.idSensor1,
+           p->distancia.idSensor2,
+           p->distancia.distancia);
+}
+
+int pesquisarDistancia(void* lista, const char* termo) {
+    char buffer1[20], buffer2[20];
+    int idSensor1Busca, idSensor2Busca;
+
+    printf("\nPesquisar distancia entre dois sensores:\n");
+    printf("Digite o ID do primeiro Sensor: ");
+    lerString("", buffer1, sizeof(buffer1));
+    if (sscanf(buffer1, "%d", &idSensor1Busca) != 1) {
+        printf("ID invalido.\n");
+        return 0;
+    }
+
+    printf("Digite o ID do segundo Sensor: ");
+    lerString("", buffer2, sizeof(buffer2));
+    if (sscanf(buffer2, "%d", &idSensor2Busca) != 1) {
+        printf("ID invalido.\n");
+        return 0;
+    }
+    
+    int i = 0;
+    int encontrados = 0;
+    for (NodeDistancia* p = (NodeDistancia*)lista; p; p = p->next, i++) {
+        if ((p->distancia.idSensor1 == idSensor1Busca && p->distancia.idSensor2 == idSensor2Busca) ||
+            (p->distancia.idSensor1 == idSensor2Busca && p->distancia.idSensor2 == idSensor1Busca)) {
+            if (encontrados == 0) printf("--> Distancia(s) encontrada(s):\n");
+            imprimirItemDistancia(p, i + 1);
+            encontrados++;
+        }
+    }
+     if (encontrados == 0) {
+        printf("Nenhuma distancia encontrada entre os sensores %d e %d.\n", idSensor1Busca, idSensor2Busca);
+    }
+    return encontrados > 0;
+}
+
 /**
  * @brief A função exibe o histórico de passagens dos veículos pelos sensores,
- * incluindo o tipo de registo ("entrada" ou "saída").
  * 
  * @param lista 
  */
 void imprimirListaDistancias(NodeDistancia* lista) {
-    printf("\n--- Lista de Distâncias ---\n");
-    if (!lista) {
-        printf("Nenhuma distância carregada.\n");
-        return;
-    }
-    int i = 1;
-    for (NodeDistancia* p = lista; p; p = p->next, i++) {
-        printf("%2d) %d -> %d : %.3f km\n",
-               i,
-               p->distancia.idSensor1,
-               p->distancia.idSensor2,
-               p->distancia.distancia);
-    }
+    paginarListaGenerica(
+        lista,
+        contarDistancias(lista),
+        sizeof(NodeDistancia),
+        obterNextDistancia,
+        imprimirItemDistancia,
+        pesquisarDistancia,
+        "--- Lista de Distancias ---"
+    );
 }
 
 // --- Passagens ---
+
+// --- Funções auxiliares para a paginação de PASSAGENS ---
+
+int contarPassagens(NodePassagem* lista) {
+    int count = 0;
+    for (NodePassagem* p = lista; p; p = p->next) count++;
+    return count;
+}
+
+void* obterNextPassagem(void* no) { 
+    return ((NodePassagem*)no)->next; 
+}
+
+void imprimirItemPassagem(void* item, int indice) {
+    NodePassagem* p = (NodePassagem*)item;
+    printf("%4d) SensorID=%-3d | VeiculoID=%-5d | DataHora=\"%s\" | Tipo=%s\n",
+           indice,
+           p->passagem.idSensor,
+           p->passagem.idVeiculo,
+           p->passagem.dataHora,
+           p->passagem.tipoRegisto == 0 ? "Entrada" : "Saida  ");
+}
+
+int pesquisarPassagem(void* lista, const char* termo) {
+    char buffer[20];
+    int idVeiculoBusca;
+    printf("\nDigite o ID do Veiculo para procurar passagens: ");
+    lerString("", buffer, sizeof(buffer));
+    if (sscanf(buffer, "%d", &idVeiculoBusca) != 1) {
+        printf("ID de Veiculo invalido.\n");
+        return 0;
+    }
+    
+    int i = 0;
+    int encontrados = 0;
+    printf("Passagens encontradas para o Veiculo ID %d:\n", idVeiculoBusca);
+    for (NodePassagem* p = (NodePassagem*)lista; p; p = p->next, i++) {
+        if (p->passagem.idVeiculo == idVeiculoBusca) {
+            imprimirItemPassagem(p, i + 1); // Mostra o índice global, mas não é crucial para a pesquisa
+            encontrados++;
+        }
+    }
+    if (encontrados == 0) {
+        printf("Nenhuma passagem encontrada para o Veiculo ID %d.\n", idVeiculoBusca);
+    } else {
+        printf("Total de %d passagens encontradas para o veiculo.\n", encontrados);
+    }
+    return encontrados > 0;
+}
 
 /**
  * @brief Percorre a lista e desaloca cada nó, liberando toda a memória associada.
@@ -126,20 +445,15 @@ void imprimirListaDistancias(NodeDistancia* lista) {
  * @param lista 
  */
 void imprimirListaPassagens(NodePassagem* lista) {
-    printf("\n--- Lista de Passagens ---\n");
-    if (!lista) {
-        printf("Nenhuma passagem carregada.\n");
-        return;
-    }
-    int i = 1;
-    for (NodePassagem* p = lista; p; p = p->next, i++) {
-        printf("%2d) SensorID=%d | VeiculoID=%d | DataHora=\"%s\" | Tipo=%s\n",
-               i,
-               p->passagem.idSensor,
-               p->passagem.idVeiculo,
-               p->passagem.dataHora,
-               p->passagem.tipoRegisto == 0 ? "entrada" : "saída");
-    }
+    paginarListaGenerica(
+        lista,
+        contarPassagens(lista),
+        sizeof(NodePassagem),
+        obterNextPassagem,
+        imprimirItemPassagem,
+        pesquisarPassagem,
+        "--- Lista de Passagens ---"
+    );
 }
 
 // --- libertar Donos ---
@@ -381,67 +695,119 @@ void mostrar_veiculos_periodo(Passagem passagens[], int total_passagens, Carro c
  * @param listaDonos
  */
 void registarDono(NodeDono** listaDonos) {
+    char buffer[DONO_MAX_NOME]; // Buffer genérico para leitura
     int nif;
     char nome[DONO_MAX_NOME];
-    char cp[DONO_MAX_CODIGOPOSTAL];
-    printf("NIF: ");         
-    scanf("%d", &nif);
-    printf("Nome: ");        
-    scanf(" %199[^\n]", nome);
-    printf("Código postal: "); 
-    scanf(" %9[^\n]", cp);
+    char codigoPostal[DONO_MAX_CODIGOPOSTAL];
 
-    NodeDono *novo = malloc(sizeof(NodeDono));
+    printf("\n--- Registar Novo Dono ---\n");
+
+    // Validar NIF
+    do {
+        lerString("NIF (9 digitos): ", buffer, sizeof(buffer));
+        if (sscanf(buffer, "%d", &nif) != 1 || !validarNIF(nif)) {
+            printf("Erro: NIF invalido. Por favor, insira 9 digitos numericos.\n");
+            nif = 0; // Reset para continuar o loop
+        } else if (pesquisarDonoPorNIF(*listaDonos, nif) != NULL) {
+            printf("Erro: NIF %d ja existe na base de dados.\n", nif);
+            nif = 0; // Reset
+        }
+    } while (nif == 0);
+
+    // Validar Nome
+    do {
+        lerString("Nome: ", nome, sizeof(nome));
+        if (strlen(nome) == 0) {
+            printf("Erro: O nome nao pode estar em branco.\n");
+        }
+    } while (strlen(nome) == 0);
+
+    // Validar Código Postal
+    do {
+        lerString("Codigo Postal (formato XXXX-XXX): ", codigoPostal, sizeof(codigoPostal));
+        if (!validarCodigoPostal(codigoPostal)) {
+            printf("Erro: Formato de codigo postal invalido. Use XXXX-XXX.\n");
+        }
+    } while (!validarCodigoPostal(codigoPostal));
+
+    // Alocar e inserir o novo dono
+    NodeDono* novo = malloc(sizeof(NodeDono));
     if (!novo) {
-        printf("Erro ao alocar memória.\n");
+        printf("Erro critico: Falha ao alocar memoria.\n");
         return;
     }
 
     novo->dono.numeroContribuinte = nif;
-    strncpy(novo->dono.nome, nome, DONO_MAX_NOME);
-    strncpy(novo->dono.codigoPostal, cp, DONO_MAX_CODIGOPOSTAL);
-
+    strcpy(novo->dono.nome, nome);
+    strcpy(novo->dono.codigoPostal, codigoPostal);
     novo->next = *listaDonos;
     *listaDonos = novo;
 
+    printf("\nDono '%s' registado com sucesso!\n", nome);
 }
 
-/**
- * @brief Função de registar carro
- * 
- * @param listaCarros
- */
-void registarCarro(NodeCarro** listaCarros) {
-    char matricula[CARRO_MAX_MATRICULA];
-    char marca[CARRO_MAX_MARCA];
-    char modelo[CARRO_MAX_MODELO];
-    int ano, dono, id;
+void registarCarro(NodeCarro** listaCarros, NodeDono* listaDonos) {
+    char buffer[50];
+    Carro novoCarro;
+    int ano_atual = 2025; // Pode ser melhorado para obter o ano do sistema
 
-    printf("Matrícula: ");
-    scanf(" %19[^\n]", matricula);
-    printf("Marca: ");
-    scanf(" %49[^\n]", marca);
-    printf("Modelo: ");
-    scanf(" %49[^\n]", modelo);
-    printf("Ano: ");
-    scanf("%d", &ano);
-    printf("Dono (NIF): ");
-    scanf("%d", &dono);
-    printf("ID veículo: ");
-    scanf("%d", &id);
+    printf("\n--- Registar Novo Carro ---\n");
 
-    NodeCarro *novo = malloc(sizeof(NodeCarro));
-    if (!novo) return;
+    // Validar Matrícula
+    do {
+        lerString("Matricula (XX-XX-XX ou XX-NN-XX ou NN-XX-NN): ", novoCarro.matricula, sizeof(novoCarro.matricula));
+        if (!validarMatricula(novoCarro.matricula)) { // Supondo que validarMatricula foi melhorada
+            printf("Erro: Formato de matricula invalido.\n");
+        } else if (/* Lógica para verificar se matrícula já existe */ false) {
+             // Pode adicionar uma função pesquisarCarroPorMatricula se quiser garantir unicidade
+        }
+    } while (!validarMatricula(novoCarro.matricula));
 
-    strncpy(novo->carro.matricula, matricula, CARRO_MAX_MATRICULA);
-    strncpy(novo->carro.marca,     marca,     CARRO_MAX_MARCA);
-    strncpy(novo->carro.modelo,    modelo,    CARRO_MAX_MODELO);
-    novo->carro.ano = ano;
-    novo->carro.donoContribuinte = dono;
-    novo->carro.idVeiculo = id;
+    // Validar Marca e Modelo
+    do { lerString("Marca: ", novoCarro.marca, sizeof(novoCarro.marca)); } while (strlen(novoCarro.marca) == 0);
+    do { lerString("Modelo: ", novoCarro.modelo, sizeof(novoCarro.modelo)); } while (strlen(novoCarro.modelo) == 0);
 
-    novo->next = *listaCarros;
-    *listaCarros = novo;
+    // Validar Ano
+    do {
+        lerString("Ano: ", buffer, sizeof(buffer));
+        if (sscanf(buffer, "%d", &novoCarro.ano) != 1 || novoCarro.ano < 1900 || novoCarro.ano > ano_atual) {
+            printf("Erro: Ano invalido. Insira um valor entre 1900 e %d.\n", ano_atual);
+            novoCarro.ano = 0;
+        }
+    } while (novoCarro.ano == 0);
+
+    // Validar NIF do Dono (Integridade Referencial)
+    do {
+        lerString("NIF do Dono: ", buffer, sizeof(buffer));
+        if (sscanf(buffer, "%d", &novoCarro.donoContribuinte) != 1 || !validarNIF(novoCarro.donoContribuinte)) {
+            printf("Erro: NIF invalido.\n");
+            novoCarro.donoContribuinte = 0;
+        } else if (pesquisarDonoPorNIF(listaDonos, novoCarro.donoContribuinte) == NULL) {
+            printf("Erro: Nao existe nenhum dono com o NIF %d. Registe o dono primeiro.\n", novoCarro.donoContribuinte);
+            novoCarro.donoContribuinte = 0;
+        }
+    } while (novoCarro.donoContribuinte == 0);
+
+    // Validar ID do Veículo (Unicidade)
+    do {
+        lerString("ID do Veiculo (numerico): ", buffer, sizeof(buffer));
+        if (sscanf(buffer, "%d", &novoCarro.idVeiculo) != 1 || novoCarro.idVeiculo <= 0) {
+            printf("Erro: ID do veiculo deve ser um numero positivo.\n");
+            novoCarro.idVeiculo = 0;
+        } else if (pesquisarCarroPorId(*listaCarros, novoCarro.idVeiculo) != NULL) {
+            printf("Erro: O ID de veiculo %d ja esta em uso.\n", novoCarro.idVeiculo);
+            novoCarro.idVeiculo = 0;
+        }
+    } while (novoCarro.idVeiculo == 0);
+
+    NodeCarro* novoNode = malloc(sizeof(NodeCarro));
+    if (!novoNode) { printf("Erro critico: Falha ao alocar memoria.\n"); return; }
+
+    novoNode->carro = novoCarro;
+    novoNode->next = *listaCarros;
+    *listaCarros = novoNode;
+
+    printf("\nCarro com matricula %s registado com sucesso!\n", novoCarro.matricula);
 }
 
 
@@ -451,59 +817,100 @@ void registarCarro(NodeCarro** listaCarros) {
  * 
  * @param listaSensores
  */
-
 void registarSensor(NodeSensor** listaSensores) {
-    int id;
-    char designacao[SENSOR_MAX_DESIGNACAO];
-    char lat[SENSOR_MAX_LATITUDE];
-    char lon[SENSOR_MAX_LONGITUDE];
+    char buffer[SENSOR_MAX_DESIGNACAO];
+    Sensor novoSensor;
 
-    printf("ID Sensor: ");
-    scanf("%d", &id);
-    printf("Designação: ");
-    scanf(" %99[^\n]", designacao);
-    printf("Latitude (texto): ");
-    scanf(" %49[^\n]", lat);
-    printf("Longitude (texto): ");
-    scanf(" %49[^\n]", lon);
+    printf("\n--- Registar Novo Sensor ---\n");
 
-    NodeSensor *novo = malloc(sizeof(NodeSensor));
-    if (!novo) return;
+    // Validar ID do Sensor (positivo e único)
+    do {
+        lerString("ID do Sensor (numerico, positivo): ", buffer, sizeof(buffer));
+        if (sscanf(buffer, "%d", &novoSensor.idSensor) != 1 || novoSensor.idSensor <= 0) {
+            printf("Erro: O ID deve ser um numero inteiro positivo.\n");
+            novoSensor.idSensor = 0; // Reset para continuar o loop
+        } else if (pesquisarSensorPorId(*listaSensores, novoSensor.idSensor) != NULL) {
+            printf("Erro: O ID de sensor %d ja esta em uso.\n", novoSensor.idSensor);
+            novoSensor.idSensor = 0; // Reset
+        }
+    } while (novoSensor.idSensor == 0);
 
-    novo->sensor.idSensor = id;
-    strncpy(novo->sensor.designacao, designacao, SENSOR_MAX_DESIGNACAO);
-    strncpy(novo->sensor.latitude, lat, SENSOR_MAX_LATITUDE);
-    strncpy(novo->sensor.longitude, lon, SENSOR_MAX_LONGITUDE);
+    // Validar Designação, Latitude e Longitude (não podem estar vazios)
+    do { lerString("Designacao: ", novoSensor.designacao, sizeof(novoSensor.designacao)); } while (strlen(novoSensor.designacao) == 0);
+    do { lerString("Latitude (texto): ", novoSensor.latitude, sizeof(novoSensor.latitude)); } while (strlen(novoSensor.latitude) == 0);
+    do { lerString("Longitude (texto): ", novoSensor.longitude, sizeof(novoSensor.longitude)); } while (strlen(novoSensor.longitude) == 0);
 
-    novo->next = *listaSensores;
-    *listaSensores = novo;
+    // Alocar e inserir o novo sensor
+    NodeSensor *novoNode = malloc(sizeof(NodeSensor));
+    if (!novoNode) { printf("Erro critico: Falha ao alocar memoria.\n"); return; }
+
+    novoNode->sensor = novoSensor;
+    novoNode->next = *listaSensores;
+    *listaSensores = novoNode;
+
+    printf("\nSensor '%s' registado com sucesso!\n", novoSensor.designacao);
 }
 
 /**
  * @brief Função de registar distância
  * 
  * @param listaDistancias
+ * @param listaSensores
  */
-void registarDistancia(NodeDistancia** listaDistancias) {
-    int a, b;
-    float d;
+void registarDistancia(NodeDistancia** listaDistancias, NodeSensor* listaSensores) {
+    char buffer[50];
+    Distancia novaDistancia;
 
-    printf("Sensor A (ID): ");
-    scanf("%d", &a);
-    printf("Sensor B (ID): ");
-    scanf("%d", &b);
-    printf("Distância (km): ");
-    scanf("%f", &d);
+    printf("\n--- Registar Nova Distancia entre Sensores ---\n");
+    if (!listaSensores) {
+        printf("Erro: Nao ha sensores registados. Registe sensores primeiro.\n");
+        return;
+    }
 
-    NodeDistancia *novo = malloc(sizeof(NodeDistancia));
-    if (!novo) return;
+    // Validar ID do Sensor 1 (deve existir)
+    do {
+        lerString("ID do Sensor 1: ", buffer, sizeof(buffer));
+        if (sscanf(buffer, "%d", &novaDistancia.idSensor1) != 1) {
+            printf("Erro: Input invalido.\n");
+            novaDistancia.idSensor1 = 0;
+        } else if (pesquisarSensorPorId(listaSensores, novaDistancia.idSensor1) == NULL) {
+            printf("Erro: O sensor com ID %d nao existe.\n", novaDistancia.idSensor1);
+            novaDistancia.idSensor1 = 0;
+        }
+    } while (novaDistancia.idSensor1 == 0);
 
-    novo->distancia.idSensor1 = a;
-    novo->distancia.idSensor2 = b;
-    novo->distancia.distancia    = d;
+    // Validar ID do Sensor 2 (deve existir e ser diferente do sensor 1)
+    do {
+        lerString("ID do Sensor 2: ", buffer, sizeof(buffer));
+        if (sscanf(buffer, "%d", &novaDistancia.idSensor2) != 1) {
+            printf("Erro: Input invalido.\n");
+            novaDistancia.idSensor2 = 0;
+        } else if (novaDistancia.idSensor1 == novaDistancia.idSensor2) {
+            printf("Erro: O ID do Sensor 2 nao pode ser igual ao do Sensor 1.\n");
+            novaDistancia.idSensor2 = 0;
+        } else if (pesquisarSensorPorId(listaSensores, novaDistancia.idSensor2) == NULL) {
+            printf("Erro: O sensor com ID %d nao existe.\n", novaDistancia.idSensor2);
+            novaDistancia.idSensor2 = 0;
+        }
+    } while (novaDistancia.idSensor2 == 0);
 
-    novo->next = *listaDistancias;
-    *listaDistancias = novo;
+    // Validar Distância (deve ser positiva)
+    do {
+        lerString("Distancia (km): ", buffer, sizeof(buffer));
+        if (sscanf(buffer, "%f", &novaDistancia.distancia) != 1 || novaDistancia.distancia <= 0) {
+            printf("Erro: A distancia deve ser um numero positivo.\n");
+            novaDistancia.distancia = 0;
+        }
+    } while (novaDistancia.distancia == 0);
+
+    NodeDistancia* novoNode = malloc(sizeof(NodeDistancia));
+    if (!novoNode) { printf("Erro critico: Falha ao alocar memoria.\n"); return; }
+
+    novoNode->distancia = novaDistancia;
+    novoNode->next = *listaDistancias;
+    *listaDistancias = novoNode;
+
+    printf("\nDistancia entre sensor %d e %d registada com sucesso!\n", novaDistancia.idSensor1, novaDistancia.idSensor2);
 }
 
 /**
@@ -511,32 +918,63 @@ void registarDistancia(NodeDistancia** listaDistancias) {
  * 
  * @param listaPassagens
  */
-void registarPassagem(NodePassagem** listaPassagens) {
-    int idS, idV, tipo;
-    char dataHora[PASSAGEM_MAX_DATAHORA];
+void registarPassagem(NodePassagem** listaPassagens, NodeSensor* listaSensores, NodeCarro* listaCarros) {
+    char buffer[50];
+    Passagem novaPassagem;
 
-    printf("ID Sensor: ");
-    scanf("%d", &idS);
-    printf("ID Veículo: ");
-    scanf("%d", &idV);
-    printf("Data e hora (texto): ");
-    scanf(" %19[^\n]", dataHora);
-    printf("Tipo (0=entrada,1=saída): ");
-    scanf("%d", &tipo);
+    printf("\n--- Registar Nova Passagem ---\n");
+    if (!listaSensores || !listaCarros) {
+        printf("Erro: E necessario ter sensores e carros registados primeiro.\n");
+        return;
+    }
 
-    NodePassagem *novo = malloc(sizeof(NodePassagem));
-    if (!novo) return;
+    // Validar ID do Sensor (deve existir)
+    do {
+        lerString("ID do Sensor: ", buffer, sizeof(buffer));
+        if (sscanf(buffer, "%d", &novaPassagem.idSensor) != 1 || pesquisarSensorPorId(listaSensores, novaPassagem.idSensor) == NULL) {
+            printf("Erro: ID de sensor invalido ou nao existente.\n");
+            novaPassagem.idSensor = 0;
+        }
+    } while (novaPassagem.idSensor == 0);
+    
+    // Validar ID do Veículo (deve existir)
+    do {
+        lerString("ID do Veiculo: ", buffer, sizeof(buffer));
+        if (sscanf(buffer, "%d", &novaPassagem.idVeiculo) != 1 || pesquisarCarroPorId(listaCarros, novaPassagem.idVeiculo) == NULL) {
+            printf("Erro: ID de veiculo invalido ou nao existente.\n");
+            novaPassagem.idVeiculo = 0;
+        }
+    } while (novaPassagem.idVeiculo == 0);
 
-    novo->passagem.idSensor    = idS;
-    novo->passagem.idVeiculo  = idV;
-    strncpy(novo->passagem.dataHora, dataHora, PASSAGEM_MAX_DATAHORA);
-    novo->passagem.tipoRegisto = tipo;
-    novo->passagem.ts = parseTimestamp(novo->passagem.dataHora);
+    // Validar Data e Hora
+    do {
+        lerString("Data e hora (DD-MM-AAAA HH:MM:SS): ", novaPassagem.dataHora, sizeof(novaPassagem.dataHora));
+        if (parseTimestamp(novaPassagem.dataHora) == -1) {
+            printf("Erro: Formato de data/hora invalido. Use DD-MM-AAAA HH:MM:SS.\n");
+            strcpy(novaPassagem.dataHora, ""); // Limpa para repetir o loop
+        }
+    } while (strlen(novaPassagem.dataHora) == 0);
+    
+    // Validar Tipo de Registo (0 ou 1)
+    do {
+        lerString("Tipo (0=entrada, 1=saida): ", buffer, sizeof(buffer));
+        if (sscanf(buffer, "%d", &novaPassagem.tipoRegisto) != 1 || (novaPassagem.tipoRegisto != 0 && novaPassagem.tipoRegisto != 1)) {
+            printf("Erro: Tipo de registo deve ser 0 ou 1.\n");
+            novaPassagem.tipoRegisto = -1; // Valor inválido para continuar o loop
+        }
+    } while (novaPassagem.tipoRegisto == -1);
 
-    novo->next = *listaPassagens;
-    *listaPassagens = novo;
+    // Preencher timestamp e adicionar à lista
+    novaPassagem.ts = parseTimestamp(novaPassagem.dataHora);
+    NodePassagem *novoNode = malloc(sizeof(NodePassagem));
+    if (!novoNode) { printf("Erro critico: Falha ao alocar memoria.\n"); return; }
+    
+    novoNode->passagem = novaPassagem;
+    novoNode->next = *listaPassagens;
+    *listaPassagens = novoNode;
+
+    printf("\nPassagem do veiculo %d no sensor %d registada com sucesso!\n", novaPassagem.idVeiculo, novaPassagem.idSensor);
 }
-
 /**
  * @brief Verifica se um NIF (9 dígitos) é válido (apenas formato).
  */
@@ -896,6 +1334,19 @@ NodePassagem* pesquisarPassagensParaVeiculo(HashTablePassagens* ht, int idVeicul
         if (grupo->idVeiculo == idVeiculo)
             return grupo->passagens;
         grupo = grupo->next;
+    }
+    return NULL;
+}
+
+/**
+ * @brief Procura por um sensor na lista pelo seu ID.
+ * @return Retorna o ponteiro para o NodeSensor se encontrado, caso contrário NULL.
+ */
+NodeSensor* pesquisarSensorPorId(NodeSensor* listaSensores, int idSensor) {
+    for (NodeSensor* p = listaSensores; p; p = p->next) {
+        if (p->sensor.idSensor == idSensor) {
+            return p;
+        }
     }
     return NULL;
 }
@@ -1677,7 +2128,7 @@ void rankingMarcasVelocidade(NodeCarro* listaCarros, NodePassagem* listaPassagen
 }
 
 // --- Função auxiliar para pesquisar um Dono por NIF ---
-static NodeDono* pesquisarDonoPorNIF(NodeDono* listaDonos, int nif) {
+NodeDono* pesquisarDonoPorNIF(NodeDono* listaDonos, int nif) {
     for (NodeDono* p = listaDonos; p; p = p->next) {
         if (p->dono.numeroContribuinte == nif) {
             return p;
@@ -2138,4 +2589,17 @@ void debugVeiculo(int idVeiculoDebug, NodeCarro* listaCarros, NodePassagem* list
 
     // Limpar a memória alocada para a lista temporária
     libertarListaPassagens(&passagensVeiculo);
+}
+
+/**
+ * @brief Lê uma linha de texto do stdin de forma segura.
+ * @param prompt A mensagem a ser exibida para o utilizador.
+ * @param buffer O buffer onde a string será armazenada.
+ * @param tamanho O tamanho do buffer.
+ */
+void lerString(const char* prompt, char* buffer, int tamanho) {
+    printf("%s", prompt);
+    fgets(buffer, tamanho, stdin);
+    // Remove o '\n' que o fgets deixa no final
+    buffer[strcspn(buffer, "\n")] = 0;
 }
