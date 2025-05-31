@@ -85,4 +85,7 @@ void exportarDadosCSV(NodeDono* listaDonos, NodeCarro* listaCarros, NodeSensor* 
 void exportarDadosXML(NodeDono* listaDonos, NodeCarro* listaCarros, NodeSensor* listaSensores, 
                       NodeDistancia* listaDistancias, NodePassagem* listaPassagens);
 
+void debugVeiculo(int idVeiculoDebug, NodeCarro* listaCarros, NodePassagem* listaPassagens, NodeDistancia* listaDistancias);
+
+
 #endif // OPERATIONS_H

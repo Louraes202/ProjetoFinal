@@ -720,32 +720,54 @@ double obterDistancia(NodeDistancia* lista, int id1, int id2) {
     return -1.0; // Distância não encontrada
 }
 
-// Função para calcular a velocidade média total de um veículo
+// Função para calcular a velocidade média total de um veículo (VERSÃO CORRIGIDA)
 double calcularVelocidadeMediaPonderada(NodePassagem* passagens, NodeDistancia* listaDistancias) {
-    if (!passagens || !passagens->next) return -1.0; // É necessário, pelo menos, dois pontos
+    // A lista de passagens para um veículo já deve vir ordenada por data
+    if (!passagens) return -1.0;
 
-    double somaVelocidades = 0.0;
-    double tempoTotal = 0.0;
+    double somaVelocidadesPonderadas = 0.0;
+    double tempoTotalViagem = 0.0;
+    int viagensValidas = 0;
 
-    // Percorrer as passagens consecutivas
-    for (NodePassagem* p = passagens; p && p->next; p = p->next) {
-        double distancia = obterDistancia(listaDistancias, p->passagem.idSensor, p->next->passagem.idSensor);
-        if (distancia < 0 || distancia > 500.0) { // Ignorar distâncias inválidas
-            continue;
+    // Percorre a lista à procura de uma ENTRADA
+    for (NodePassagem* pEntrada = passagens; pEntrada; pEntrada = pEntrada->next) {
+        if (pEntrada->passagem.tipoRegisto == 0) { // Encontrou uma entrada (tipo 0)
+            
+            // Agora, a partir desta entrada, procure a PRÓXIMA saída
+            NodePassagem* pSaida = NULL;
+            for (pSaida = pEntrada->next; pSaida; pSaida = pSaida->next) {
+                if (pSaida->passagem.tipoRegisto == 1) { // Encontrou uma saída (tipo 1)
+                    break; // Encontrou o par, sai do loop interno
+                }
+            }
+
+            // Se um par Entrada->Saída foi encontrado
+            if (pSaida) {
+                double distancia = obterDistancia(listaDistancias, pEntrada->passagem.idSensor, pSaida->passagem.idSensor);
+                double tempo_s = difftime(pSaida->passagem.ts, pEntrada->passagem.ts);
+
+                // Define um tempo máximo razoável para uma viagem (ex: 24 horas = 86400s)
+                const double MAX_TEMPO_VIAGEM = 86400.0; 
+
+                if (distancia > 0 && tempo_s > 0 && tempo_s < MAX_TEMPO_VIAGEM) {
+                    double velocidade_kmh = (distancia / tempo_s) * 3600.0;
+                    
+                    somaVelocidadesPonderadas += velocidade_kmh * tempo_s;
+                    tempoTotalViagem += tempo_s;
+                    viagensValidas++;
+                }
+                
+                // Move o ponteiro principal para depois da saída encontrada para não reprocessar
+                pEntrada = pSaida; 
+            }
         }
-
-        double tempo = difftime(p->next->passagem.ts, p->passagem.ts);
-        if (tempo <= 0 || tempo > 86400) { // Ignorar tempos inválidos (maior que 24 horas)
-            continue;
-        }
-
-        double velocidade = (distancia / tempo) * 3600.0; // Velocidade em km/h
-        somaVelocidades += velocidade * tempo; // Ponderar a velocidade pelo tempo
-        tempoTotal += tempo; // Somar o tempo do trecho
     }
 
-    if (tempoTotal <= 0) return -1.0; // Evitar divisão por zero
-    return somaVelocidades / tempoTotal; // Velocidade média ponderada
+    if (viagensValidas > 0 && tempoTotalViagem > 0) {
+        return somaVelocidadesPonderadas / tempoTotalViagem;
+    }
+
+    return -1.0; // Nenhuma viagem válida encontrada
 }
 
 double calcularVelocidadeInfracao(NodePassagem* passagens,
@@ -2016,4 +2038,104 @@ void exportarDadosXML(NodeDono* listaDonos, NodeCarro* listaCarros, NodeSensor* 
     fclose(fp);
 
     printf("Ficheiro XML exportado com sucesso em: %s\n", filepath);
+}
+
+void debugVeiculo(int idVeiculoDebug, NodeCarro* listaCarros, NodePassagem* listaPassagens, NodeDistancia* listaDistancias) {
+    printf("\n==============================================\n");
+    printf("--- INICIANDO DEBUG PARA O VEICULO ID: %d ---\n", idVeiculoDebug);
+    printf("==============================================\n");
+
+    // Passo 1: Isolar as passagens apenas para este veículo
+    NodePassagem* passagensVeiculo = NULL;
+    NodePassagem* cauda = NULL;
+    for (NodePassagem* p = listaPassagens; p; p = p->next) {
+        if (p->passagem.idVeiculo == idVeiculoDebug) {
+            NodePassagem* nova = malloc(sizeof(NodePassagem));
+            if (!nova) {
+                printf("ERRO: Falha ao alocar memoria para debug.\n");
+                return;
+            }
+            nova->passagem = p->passagem;
+            nova->next = NULL;
+            if (passagensVeiculo == NULL) {
+                passagensVeiculo = cauda = nova;
+            } else {
+                cauda->next = nova;
+                cauda = nova;
+            }
+        }
+    }
+
+    if (passagensVeiculo == NULL) {
+        printf("Nenhuma passagem encontrada para o veiculo ID %d.\n", idVeiculoDebug);
+        return;
+    }
+
+    // Passo 2: Ordenar as passagens do veículo por data/hora
+    passagensVeiculo = mergeSortPassagens(passagensVeiculo);
+    printf("\n[INFO] Encontradas e ordenadas as seguintes passagens:\n");
+    for (NodePassagem* p = passagensVeiculo; p; p = p->next) {
+        printf(" -> Sensor: %d | Data: %s\n", p->passagem.idSensor, p->passagem.dataHora);
+    }
+
+    // Passo 3: Informação do Veículo
+    NodeCarro* carro = pesquisarCarroPorId(listaCarros, idVeiculoDebug);
+    if (carro) {
+        printf("\n[INFO] Detalhes do Veiculo: Matricula %s, Marca %s, Modelo %s\n",
+               carro->carro.matricula, carro->carro.marca, carro->carro.modelo);
+    } else {
+        printf("\n[AVISO] Nao foram encontrados detalhes para o veiculo ID %d.\n", idVeiculoDebug);
+    }
+
+    // Passo 4: Calcular e imprimir detalhes de cada troço da viagem
+    printf("\n--- Analise dos Trocos da Viagem ---\n");
+    double somaVelocidadesPonderadas = 0.0;
+    double tempoTotalViagem = 0.0;
+    int trocosValidos = 0;
+
+    for (NodePassagem* p = passagensVeiculo; p && p->next; p = p->next) {
+        printf("\n-> A analisar troco: Sensor %d para Sensor %d\n", p->passagem.idSensor, p->next->passagem.idSensor);
+
+        // Obter Timestamps
+        time_t ts1 = p->passagem.ts;
+        time_t ts2 = p->next->passagem.ts;
+        printf("   - DataHora 1: %s (Timestamp Lido: %ld)\n", p->passagem.dataHora, ts1);
+        printf("   - DataHora 2: %s (Timestamp Lido: %ld)\n", p->next->passagem.dataHora, ts2);
+        
+        // Obter Distância
+        double distancia = obterDistancia(listaDistancias, p->passagem.idSensor, p->next->passagem.idSensor);
+        printf("   - Distancia entre sensores: %.2f km\n", distancia);
+
+        // Calcular Tempo
+        double tempo_s = difftime(ts2, ts1);
+        printf("   - Tempo de viagem no troco: %.2f segundos\n", tempo_s);
+
+        // Validações
+        if (distancia <= 0 || tempo_s <= 0) {
+            printf("   [ERRO NO CALCULO] Distancia ou tempo invalidos. A saltar este troco.\n");
+            continue;
+        }
+
+        // Calcular Velocidade
+        double velocidade_kmh = (distancia / tempo_s) * 3600.0;
+        printf("   => VELOCIDADE MEDIA NO TROCO: %.2f km/h\n", velocidade_kmh);
+
+        somaVelocidadesPonderadas += velocidade_kmh * tempo_s;
+        tempoTotalViagem += tempo_s;
+        trocosValidos++;
+    }
+
+    // Passo 5: Calcular e imprimir a velocidade média final
+    printf("\n--- Resultado Final para o Veiculo ID %d ---\n", idVeiculoDebug);
+    if (trocosValidos > 0 && tempoTotalViagem > 0) {
+        double velocidadeMediaFinal = somaVelocidadesPonderadas / tempoTotalViagem;
+        printf("Velocidade Media Ponderada Final: %.2f km/h\n", velocidadeMediaFinal);
+        printf("Calculada com base em %d trocos validos.\n", trocosValidos);
+    } else {
+        printf("Nao foi possivel calcular uma velocidade media final (nenhum troco valido encontrado).\n");
+    }
+    printf("==============================================\n");
+
+    // Limpar a memória alocada para a lista temporária
+    libertarListaPassagens(&passagensVeiculo);
 }

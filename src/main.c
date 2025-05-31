@@ -59,12 +59,14 @@ int main(int argc, char *argv[]) {
 
   // Definir intervalo de tempo para filtrar as infrações (exemplo)
   char inicioStr[] = "31-01-2003 23:00:00";
-  char fimStr[]    = "31-12-2020 23:59:59";
+  char fimStr[]    = "31-12-2003 23:59:59";
   time_t inicio = parseTimestamp(inicioStr);
   time_t fim    = parseTimestamp(fimStr);
 
-  // Testar a nova função do Requisito 18
-  exportarDadosXML(donos, carros, sensores, distancias, passagens);
+  // teste de velocidades medias
+  // void velocidadesMedias(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, NodeCarro* listaCarros, time_t inicio, time_t fim);
+  velocidadesMedias(passagens, distancias, carros, inicio, fim);
+
 
   // Libertar memória
   libertarListaPassagens(&passagens);
