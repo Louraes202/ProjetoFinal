@@ -2662,3 +2662,302 @@ double velocidadeMediaPorCodigoPostal(const char* codPostal, NodeDono* listaDono
 
     return (distanciaTotal / tempoTotalSegundos) * 3600.0; // km/h
 }
+
+int compararCarrosPorMatricula(const void* a, const void* b) {
+    // Os elementos do array são ponteiros para os nós (NodeCarro*),
+    // então 'a' e 'b' são ponteiros para esses ponteiros (NodeCarro**).
+    NodeCarro* carroA = *(NodeCarro**)a;
+    NodeCarro* carroB = *(NodeCarro**)b;
+    return strcmp(carroA->carro.matricula, carroB->carro.matricula);
+}
+
+/**
+ * @brief Função de comparação para qsort, para ordenar Donos pelo nome.
+ */
+int compararDonosPorNome(const void* a, const void* b) {
+    NodeDono* donoA = *(NodeDono**)a; // 'a' e 'b' são ponteiros para NodeDono*
+    NodeDono* donoB = *(NodeDono**)b;
+    return strcmp(donoA->dono.nome, donoB->dono.nome);
+}
+
+void listarVeiculosPorPeriodo(NodePassagem* listaPassagens, NodeCarro* listaCarros, time_t inicio, time_t fim) {
+    if (!listaPassagens || !listaCarros) {
+        printf("Nao ha passagens ou carros carregados para processar.\n");
+        return;
+    }
+
+    NodeCarro* listaCarrosPeriodoOriginal = NULL; // Lista temporária NÃO ordenada
+    NodeCarro* caudaCarrosPeriodoOriginal = NULL;
+    int totalCarrosNoPeriodo = 0;
+
+    int* idsVeiculosAdicionados = NULL;
+    int capacidadeIds = 100;
+    int contadorIds = 0;
+    idsVeiculosAdicionados = malloc(capacidadeIds * sizeof(int));
+    if (!idsVeiculosAdicionados) {
+        printf("Erro ao alocar memoria para IDs de veiculos.\n");
+        return;
+    }
+
+    for (NodePassagem* p = listaPassagens; p; p = p->next) {
+        if (p->passagem.ts >= inicio && p->passagem.ts <= fim) {
+            int idVeiculoAtual = p->passagem.idVeiculo;
+            bool jaAdicionado = false;
+            for (int i = 0; i < contadorIds; i++) {
+                if (idsVeiculosAdicionados[i] == idVeiculoAtual) {
+                    jaAdicionado = true;
+                    break;
+                }
+            }
+
+            if (!jaAdicionado) {
+                NodeCarro* carroEncontrado = pesquisarCarroPorId(listaCarros, idVeiculoAtual);
+                if (carroEncontrado) {
+                    NodeCarro* novoNode = malloc(sizeof(NodeCarro));
+                    if (!novoNode) {
+                        fprintf(stderr, "Erro ao alocar memoria para NodeCarro temporario.\n");
+                        free(idsVeiculosAdicionados);
+                        libertarListaCarros(&listaCarrosPeriodoOriginal);
+                        return;
+                    }
+                    novoNode->carro = carroEncontrado->carro;
+                    novoNode->next = NULL;
+
+                    if (listaCarrosPeriodoOriginal == NULL) {
+                        listaCarrosPeriodoOriginal = caudaCarrosPeriodoOriginal = novoNode;
+                    } else {
+                        caudaCarrosPeriodoOriginal->next = novoNode;
+                        caudaCarrosPeriodoOriginal = novoNode;
+                    }
+                    totalCarrosNoPeriodo++;
+
+                    if (contadorIds >= capacidadeIds) {
+                        capacidadeIds *= 2;
+                        int* temp = realloc(idsVeiculosAdicionados, capacidadeIds * sizeof(int));
+                        if (!temp) {
+                            fprintf(stderr, "Erro ao realocar memoria para IDs de veiculos.\n");
+                            free(idsVeiculosAdicionados);
+                            libertarListaCarros(&listaCarrosPeriodoOriginal);
+                            return;
+                        }
+                        idsVeiculosAdicionados = temp;
+                    }
+                    idsVeiculosAdicionados[contadorIds++] = idVeiculoAtual;
+                }
+            }
+        }
+    }
+    free(idsVeiculosAdicionados);
+
+    if (listaCarrosPeriodoOriginal == NULL) {
+        printf("\nNenhum veiculo circulou no periodo especificado.\n");
+        return;
+    }
+
+    // --- Bloco de Ordenação ---
+    // 1. Converter listaCarrosPeriodoOriginal para um array de NodeCarro*
+    NodeCarro** arrayParaOrdenar = malloc(totalCarrosNoPeriodo * sizeof(NodeCarro*));
+    if (!arrayParaOrdenar) {
+        fprintf(stderr, "Erro ao alocar array para ordenacao.\n");
+        libertarListaCarros(&listaCarrosPeriodoOriginal);
+        return;
+    }
+    NodeCarro* tempNode = listaCarrosPeriodoOriginal;
+    for (int i = 0; i < totalCarrosNoPeriodo; i++) {
+        arrayParaOrdenar[i] = tempNode;
+        tempNode = tempNode->next;
+    }
+
+    // 2. Ordenar o array
+    qsort(arrayParaOrdenar, totalCarrosNoPeriodo, sizeof(NodeCarro*), compararCarrosPorMatricula);
+
+    // 3. Criar uma NOVA lista ligada a partir do array ordenado
+    NodeCarro* listaCarrosOrdenada = NULL;
+    NodeCarro* caudaOrdenada = NULL;
+    for (int i = 0; i < totalCarrosNoPeriodo; i++) {
+        NodeCarro* novoNodeOrdenado = malloc(sizeof(NodeCarro));
+        if (!novoNodeOrdenado) {
+            fprintf(stderr, "Erro ao alocar memoria para lista ordenada.\n");
+            free(arrayParaOrdenar);
+            libertarListaCarros(&listaCarrosPeriodoOriginal);
+            libertarListaCarros(&listaCarrosOrdenada); // Liberta o que foi construído
+            return;
+        }
+        novoNodeOrdenado->carro = arrayParaOrdenar[i]->carro; // Copia os dados
+        novoNodeOrdenado->next = NULL;
+
+        if (listaCarrosOrdenada == NULL) {
+            listaCarrosOrdenada = caudaOrdenada = novoNodeOrdenado;
+        } else {
+            caudaOrdenada->next = novoNodeOrdenado;
+            caudaOrdenada = novoNodeOrdenado;
+        }
+    }
+    free(arrayParaOrdenar); // Já não precisamos do array de ponteiros
+    libertarListaCarros(&listaCarrosPeriodoOriginal); // A lista original já não é necessária
+
+    // --- Fim do Bloco de Ordenação ---
+
+    paginarListaGenerica(
+        listaCarrosOrdenada, // Passa a lista agora ordenada
+        totalCarrosNoPeriodo,
+        sizeof(NodeCarro),
+        obterNextCarro,
+        imprimirItemCarro,
+        pesquisarCarro,
+        "--- Veiculos em Circulacao no Periodo (Ordenado por Matricula) ---"
+    );
+
+    libertarListaCarros(&listaCarrosOrdenada); // Liberta a lista ordenada que criámos
+}
+
+void imprimirListaDonosOrdemAlfabetica(NodeDono* listaDonos) {
+    if (!listaDonos) {
+        printf("\n--- Lista de Donos (Ordem Alfabética) ---\n");
+        printf("Nenhum dono carregado.\n");
+        return;
+    }
+
+    // 1. Contar o número total de donos
+    int totalDonos = contarDonos(listaDonos); // Usa a função contarDonos que já definimos
+    if (totalDonos == 0) {
+        printf("\n--- Lista de Donos (Ordem Alfabética) ---\n");
+        printf("Nenhum dono para exibir.\n");
+        return;
+    }
+
+    // 2. Criar um array de ponteiros para NodeDono
+    NodeDono** arrayParaOrdenar = malloc(totalDonos * sizeof(NodeDono*));
+    if (!arrayParaOrdenar) {
+        fprintf(stderr, "Erro ao alocar array para ordenacao de donos.\n");
+        return;
+    }
+
+    NodeDono* tempNode = listaDonos;
+    for (int i = 0; i < totalDonos; i++) {
+        arrayParaOrdenar[i] = tempNode;
+        tempNode = tempNode->next;
+    }
+
+    // 3. Ordenar o array de ponteiros
+    qsort(arrayParaOrdenar, totalDonos, sizeof(NodeDono*), compararDonosPorNome);
+
+    // 4. Criar uma NOVA lista ligada a partir do array ordenado
+    // Esta lista será temporária, apenas para exibição paginada.
+    NodeDono* listaDonosOrdenada = NULL;
+    NodeDono* caudaOrdenada = NULL;
+    for (int i = 0; i < totalDonos; i++) {
+        // Criamos novos nós, mas eles vão apontar para os dados originais dos donos
+        // ou, para segurança, podemos copiar os dados do dono.
+        // Vamos copiar os dados para evitar modificar a lista original se os nós fossem alterados.
+        NodeDono* novoNodeOrdenado = malloc(sizeof(NodeDono));
+        if (!novoNodeOrdenado) {
+            fprintf(stderr, "Erro ao alocar memoria para lista ordenada de donos.\n");
+            free(arrayParaOrdenar);
+            libertarListaDonos(&listaDonosOrdenada); // Liberta o que foi construído
+            return;
+        }
+        novoNodeOrdenado->dono = arrayParaOrdenar[i]->dono; // Copia a struct Dono
+        novoNodeOrdenado->next = NULL;
+
+        if (listaDonosOrdenada == NULL) {
+            listaDonosOrdenada = caudaOrdenada = novoNodeOrdenado;
+        } else {
+            caudaOrdenada->next = novoNodeOrdenado;
+            caudaOrdenada = novoNodeOrdenado;
+        }
+    }
+    free(arrayParaOrdenar); // O array de ponteiros já não é necessário
+
+    // 5. Chamar a função de paginação genérica com a lista ordenada
+    // As funções auxiliares contarDonos, obterNextDono, imprimirItemDono, pesquisarDono
+    // que já criou para imprimirListaDonos original podem ser reutilizadas aqui.
+    // A função contarDonos será chamada com a nova lista ordenada.
+    paginarListaGenerica(
+        listaDonosOrdenada,
+        totalDonos, // O total de donos é o mesmo
+        sizeof(NodeDono),
+        obterNextDono,     // Pode ser usado, pois opera sobre NodeDono*
+        imprimirItemDono,  // Pode ser usado
+        pesquisarDono,     // Pode ser usado (pesquisará na lista ordenada)
+        "--- Lista de Donos (Ordem Alfabética) ---"
+    );
+
+    // 6. Libertar a lista ligada ordenada temporária
+    libertarListaDonos(&listaDonosOrdenada);
+}
+
+void determinarMarcaMaisComum(NodeCarro* listaCarros) {
+    if (!listaCarros) {
+        printf("\nNao ha carros carregados para determinar a marca mais comum.\n");
+        return;
+    }
+
+    MarcaContagem* contagens = NULL;
+    int numMarcasUnicas = 0;
+    int capacidadeMarcas = 10; // Capacidade inicial do array de contagens
+
+    contagens = malloc(capacidadeMarcas * sizeof(MarcaContagem));
+    if (!contagens) {
+        printf("Erro ao alocar memoria para contagem de marcas.\n");
+        return;
+    }
+
+    // 1. Contar ocorrências de cada marca
+    for (NodeCarro* p = listaCarros; p != NULL; p = p->next) {
+        const char* marcaAtual = p->carro.marca;
+        bool encontrada = false;
+
+        // Procura se a marca já foi contada
+        for (int i = 0; i < numMarcasUnicas; i++) {
+            if (strcmp(contagens[i].marca, marcaAtual) == 0) {
+                contagens[i].contagem++;
+                encontrada = true;
+                break;
+            }
+        }
+
+        // Se não foi encontrada, adiciona como nova marca
+        if (!encontrada) {
+            if (numMarcasUnicas >= capacidadeMarcas) {
+                // Aumenta a capacidade do array se necessário
+                capacidadeMarcas *= 2;
+                MarcaContagem* temp = realloc(contagens, capacidadeMarcas * sizeof(MarcaContagem));
+                if (!temp) {
+                    printf("Erro ao realocar memoria para contagem de marcas.\n");
+                    free(contagens);
+                    return;
+                }
+                contagens = temp;
+            }
+            strcpy(contagens[numMarcasUnicas].marca, marcaAtual);
+            contagens[numMarcasUnicas].contagem = 1;
+            numMarcasUnicas++;
+        }
+    }
+
+    // 2. Encontrar a contagem máxima
+    if (numMarcasUnicas == 0) {
+        printf("\nNenhuma marca encontrada (lista de carros vazia ou sem marcas).\n");
+        free(contagens);
+        return;
+    }
+
+    int maxContagem = 0;
+    for (int i = 0; i < numMarcasUnicas; i++) {
+        if (contagens[i].contagem > maxContagem) {
+            maxContagem = contagens[i].contagem;
+        }
+    }
+
+    // 3. Exibir a(s) marca(s) mais comum(ns)
+    printf("\n--- Marca(s) de Automovel Mais Comum ---\n");
+    printf("A(s) marca(s) mais comum(ns) aparece(m) %d vez(es):\n", maxContagem);
+    for (int i = 0; i < numMarcasUnicas; i++) {
+        if (contagens[i].contagem == maxContagem) {
+            printf("- %s\n", contagens[i].marca);
+        }
+    }
+
+    free(contagens); // Libertar a memória do array de contagens
+}

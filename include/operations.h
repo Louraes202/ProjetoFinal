@@ -10,6 +10,7 @@ void limparBufferInput();
 void esperarEnter();
 void obterPeriodoTempo(time_t* inicio, time_t* fim);
 
+
 // --- Funções Auxiliares de Input e Pesquisa ---
 void lerString(const char* prompt, char* buffer, int tamanho);
 NodeDono* pesquisarDonoPorNIF(NodeDono* listaDonos, int nif);
@@ -52,12 +53,15 @@ time_t parseTimestamp(const char *dataHora);
 double obterDistancia(NodeDistancia* lista, int id1, int id2);
 void rankingVeiculos(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, time_t inicio, time_t fim);
 void rankingPorMarca(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, NodeCarro* listaCarros, time_t inicio, time_t fim);
+void listarVeiculosPorPeriodo(NodePassagem* listaPassagens, NodeCarro* listaCarros, time_t inicio, time_t fim);
+void imprimirListaDonosOrdemAlfabetica(NodeDono* listaDonos);
 void listarInfracoes(NodeCarro* listaCarros, NodePassagem* listaPassagens, NodeDistancia* listaDistancias, time_t inicio, time_t fim);
 void rankingInfraVeiculos(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, NodeCarro* listaCarros, time_t inicio, time_t fim);
 void velocidadesMedias(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, NodeCarro* listaCarros, time_t inicio, time_t fim);
 double velocidadeMediaPorCodigoPostal(const char* codPostal, NodeDono* listaDonos, NodeCarro* listaCarros, NodePassagem* listaPassagens, NodeDistancia* listaDistancias);
 void rankingMarcasVelocidade(NodeCarro* listaCarros, NodePassagem* listaPassagens, NodeDistancia* listaDistancias, time_t inicio, time_t fim);
 void rankingDonosVelocidade(NodeDono* listaDonos, NodeCarro* listaCarros, NodePassagem* listaPassagens, NodeDistancia* listaDistancias, time_t inicio, time_t fim);
+void determinarMarcaMaisComum(NodeCarro* listaCarros);
 void exportarDadosCSV(NodeDono* listaDonos, NodeCarro* listaCarros, NodeSensor* listaSensores, NodeDistancia* listaDistancias, NodePassagem* listaPassagens);
 void exportarDadosXML(NodeDono* listaDonos, NodeCarro* listaCarros, NodeSensor* listaSensores, NodeDistancia* listaDistancias, NodePassagem* listaPassagens);
 

@@ -182,5 +182,11 @@ typedef struct {
     int    numVeiculos;     // Nº de veículos do dono que circularam
 } DonoVelocidade;
 
+// Estrutura auxiliar local para guardar a contagem de cada marca
+typedef struct {
+    char marca[CARRO_MAX_MARCA];
+    int contagem;
+} MarcaContagem;
+
 #endif /* DATA_STRUCTURES_H */
 
