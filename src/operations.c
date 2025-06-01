@@ -1604,11 +1604,7 @@ void rankingInfraVeiculos(NodePassagem* listaPassagens, NodeDistancia* listaDist
     // 4. Para cada grupo na tabela hash, ordenar passagens e contar infrações
     for (size_t i = 0; i < ht->numBuckets; i++) {
         PassagemGroup* grupo = ht->buckets[i];
-        while (grupo) {
-            printf("Ordenar grupo do veículo %d - Passagens:\n", grupo->idVeiculo);
-            for (NodePassagem* p = grupo->passagens; p; p = p->next) {
-                printf("    dataHora = \"%s\"\n", p->passagem.dataHora);
-            }   
+        while (grupo) { 
 
             // Ordena as passagens do grupo (assumindo que foram inseridas sem ordem)
             grupo->passagens = mergeSortPassagens(grupo->passagens);
