@@ -55,6 +55,7 @@ void rankingPorMarca(NodePassagem* listaPassagens, NodeDistancia* listaDistancia
 void listarInfracoes(NodeCarro* listaCarros, NodePassagem* listaPassagens, NodeDistancia* listaDistancias, time_t inicio, time_t fim);
 void rankingInfraVeiculos(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, NodeCarro* listaCarros, time_t inicio, time_t fim);
 void velocidadesMedias(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, NodeCarro* listaCarros, time_t inicio, time_t fim);
+double velocidadeMediaPorCodigoPostal(const char* codPostal, NodeDono* listaDonos, NodeCarro* listaCarros, NodePassagem* listaPassagens, NodeDistancia* listaDistancias);
 void rankingMarcasVelocidade(NodeCarro* listaCarros, NodePassagem* listaPassagens, NodeDistancia* listaDistancias, time_t inicio, time_t fim);
 void rankingDonosVelocidade(NodeDono* listaDonos, NodeCarro* listaCarros, NodePassagem* listaPassagens, NodeDistancia* listaDistancias, time_t inicio, time_t fim);
 void exportarDadosCSV(NodeDono* listaDonos, NodeCarro* listaCarros, NodeSensor* listaSensores, NodeDistancia* listaDistancias, NodePassagem* listaPassagens);

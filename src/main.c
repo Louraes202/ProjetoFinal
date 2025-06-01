@@ -43,10 +43,11 @@ int mostrarMenu() {
     printf(" 11. Listar velocidades medias por veiculo\n");
     printf(" 12. Ranking de marcas por velocidade media\n");
     printf(" 13. Ranking de donos por velocidade media\n");
+    printf(" 14. Velocidade Media por Codigo Postal\n"); 
     printf("\n--- Sistema ---\n");
-    printf(" 14. Calcular memoria total ocupada\n");
-    printf(" 15. Exportar dados para CSV\n");
-    printf(" 16. Exportar dados para XML\n");
+    printf(" 15. Calcular memoria total ocupada\n");    
+    printf(" 16. Exportar dados para CSV\n");             
+    printf(" 17. Exportar dados para XML\n");             
     printf("\n 0. Sair\n");
     printf("---------------------------------------------\n");
     printf("Escolha uma opcao: ");
@@ -126,16 +127,36 @@ int main(void) {
                 rankingMarcasVelocidade(carros, passagens, distancias, inicio, fim);
                 break;
             case 13:
-                obterPeriodoTempo(&inicio, &fim);
+                obterPeriodoTempo(&inicio, &fim); 
                 rankingDonosVelocidade(donos, carros, passagens, distancias, inicio, fim);
                 break;
-            case 14:
+
+            case 14: 
+            {
+                char codPostalInput[DONO_MAX_CODIGOPOSTAL];
+                printf("\n--- Calcular Velocidade Media por Codigo Postal ---\n");
+                do {
+                    lerString("Introduza o Codigo Postal (formato XXXX-XXX): ", codPostalInput, sizeof(codPostalInput));
+                    if (!validarCodigoPostal(codPostalInput)) {
+                        printf("Erro: Formato de codigo postal invalido. Tente novamente.\n");
+                    }
+                } while (!validarCodigoPostal(codPostalInput));
+
+                double velMedia = velocidadeMediaPorCodigoPostal(codPostalInput, donos, carros, passagens, distancias);
+                if (velMedia < 0) {
+                    printf("Nao foi possivel calcular a velocidade media para o codigo postal %s (sem dados ou viagens validas).\n", codPostalInput);
+                } else {
+                    printf("A velocidade media dos condutores com codigo postal %s e: %.2f km/h\n", codPostalInput, velMedia);
+                }
+                break;
+            }
+            case 15:
                 printf("Memoria total ocupada: %zu bytes\n", calcularMemoriaTotal(donos, carros, sensores, distancias, passagens));
                 break;
-            case 15:
+            case 16: 
                 exportarDadosCSV(donos, carros, sensores, distancias, passagens);
                 break;
-            case 16:
+            case 17: 
                 exportarDadosXML(donos, carros, sensores, distancias, passagens);
                 break;
             case 0:

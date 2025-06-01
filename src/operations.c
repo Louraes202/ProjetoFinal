@@ -2603,3 +2603,66 @@ void lerString(const char* prompt, char* buffer, int tamanho) {
     // Remove o '\n' que o fgets deixa no final
     buffer[strcspn(buffer, "\n")] = 0;
 }
+
+double velocidadeMediaPorCodigoPostal(const char* codPostal, NodeDono* listaDonos, NodeCarro* listaCarros, NodePassagem* listaPassagens, NodeDistancia* listaDistancias) {
+    double distanciaTotal = 0.0;
+    double tempoTotalSegundos = 0.0;
+    int viagensConsideradas = 0; // Contador para garantir que houve viagens válidas
+
+    for (NodeDono* dono = listaDonos; dono != NULL; dono = dono->next) {
+        if (strcmp(dono->dono.codigoPostal, codPostal) != 0)
+            continue;
+
+        int nif = dono->dono.numeroContribuinte;
+
+        for (NodeCarro* carro = listaCarros; carro != NULL; carro = carro->next) {
+            if (carro->carro.donoContribuinte != nif)
+                continue;
+
+            int idVeiculo = carro->carro.idVeiculo;
+            NodePassagem* entradaPendente = NULL;
+
+            // Para esta lógica funcionar bem, a listaPassagens deveria estar ordenada
+            // globalmente por idVeiculo e depois por tempo, ou deveríamos filtrar
+            // as passagens por idVeiculo primeiro.
+            // Esta abordagem simplificada assume que para um dado veículo,
+            // uma entrada é seguida por uma saída correspondente antes de outra entrada.
+            for (NodePassagem* pass = listaPassagens; pass != NULL; pass = pass->next) {
+                if (pass->passagem.idVeiculo != idVeiculo)
+                    continue;
+
+                if (pass->passagem.tipoRegisto == 0) { // Entrada
+                    entradaPendente = pass;
+                } else if (pass->passagem.tipoRegisto == 1 && entradaPendente != NULL) { // Saída correspondente a uma entrada pendente
+                    
+                    // Verifica se esta saída é realmente para a última entrada deste veículo
+                    // (Numa lista global, outra entrada para o mesmo veículo poderia ter atualizado entradaPendente)
+                    // No entanto, mantemos a lógica original do seu colega para este ponto.
+                    
+                    double dist = obterDistancia(listaDistancias, entradaPendente->passagem.idSensor, pass->passagem.idSensor);
+                    
+                    if (dist > 0) { // Distância tem que ser positiva
+                        time_t t1 = entradaPendente->passagem.ts; // Usar timestamp pré-calculado
+                        time_t t2 = pass->passagem.ts;   // Usar timestamp pré-calculado
+                        double delta = difftime(t2, t1);
+
+                        const double MAX_TEMPO_VIAGEM_SEGUNDOS = 24 * 3600.0; // Ex: 24 horas
+
+                        if (delta > 0 && delta < MAX_TEMPO_VIAGEM_SEGUNDOS) {
+                            distanciaTotal += dist;
+                            tempoTotalSegundos += delta;
+                            viagensConsideradas++;
+                        }
+                    }
+                    entradaPendente = NULL; // Reset para procurar novo par entrada-saída
+                }
+            }
+        }
+    }
+
+    if (tempoTotalSegundos == 0 || viagensConsideradas == 0) {
+        return -1.0; // Evitar divisão por zero ou nenhuma viagem válida
+    }
+
+    return (distanciaTotal / tempoTotalSegundos) * 3600.0; // km/h
+}
