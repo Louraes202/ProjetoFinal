@@ -5,11 +5,11 @@
 #include "data.h"      
 #include "operations.h"
 
-/*
- * Liberta toda a memória alocada para uma lista ligada de Donos.
+/**
+ * @brief Liberta toda a memória alocada para uma lista ligada de Donos.
  * Função auxiliar para ser usada dentro de read_files.c.
- * Parâmetros:
- * lista: Ponteiro para o ponteiro da cabeça da lista (para poder anular o ponteiro original).
+ * 
+ * @param lista 
  */
 static void libertarListaDonosParcial(NodeDono** lista) {
     NodeDono* atual = *lista;
@@ -29,9 +29,11 @@ static void libertarListaDonosParcial(NodeDono** lista) {
     }
 }
 
-/*
- * Liberta toda a memória alocada para uma lista ligada de Carros.
+/**
+ * @brief Liberta toda a memória alocada para uma lista ligada de Carros.
  * Função auxiliar para ser usada dentro de read_files.c.
+ * 
+ * @param lista 
  */
 static void libertarListaCarrosParcial(NodeCarro** lista) {
     NodeCarro* atual = *lista;
@@ -49,7 +51,11 @@ static void libertarListaCarrosParcial(NodeCarro** lista) {
     }
 }
 
-// --- Função Auxiliar Estática para Liberar Sensores em Caso de Erro ---
+/**
+ * @brief --- Função Auxiliar Estática para Liberar Sensores em Caso de Erro ---
+ * 
+ * @param lista 
+ */
 static void libertarListaSensoresParcial(NodeSensor** lista) {
     NodeSensor *atual = *lista, *proximo;
     int count = 0;
@@ -84,7 +90,11 @@ static void libertarListaDistanciasParcial(NodeDistancia** lista) {
     }
 }
 
-/* Função auxiliar para libertar parcialmente em caso de erro */
+/**
+ * @brief * Função auxiliar para libertar parcialmente em caso de erro
+ * 
+ * @param lista 
+ */
 static void libertarListaPassagensParcial(NodePassagem** lista) {
     NodePassagem *atual = *lista, *seguinte;
     int cont = 0;
@@ -104,10 +114,13 @@ static void libertarListaPassagensParcial(NodePassagem** lista) {
 
 // --- Função Principal de Leitura de Donos ---
 
-/*
- * Função para ler os dados dos donos a partir de um ficheiro de texto
+/**
+ * @brief Função para ler os dados dos donos a partir de um ficheiro de texto
  * e armazená-los numa lista ligada.
  * (Versão com inicialização e libertação de memória em caso de erro no malloc)
+ * 
+ * @param nomeFicheiro 
+ * @param listaDonos 
  */
 void lerDonos(const char* nomeFicheiro, NodeDono** listaDonos) {
 
@@ -457,11 +470,13 @@ void lerDistancias(const char* nomeFicheiro, NodeDistancia** listaDistancias) {
 }
 
 
-// Pool de nós do tipo NodePassagem
+/**
+ * @brief Pool de nós do tipo NodePassagem
+ * 
+ */
 static NodePassagem *passPool = NULL;
 static size_t poolPos = 0, poolSize = 0;
 
-// Inicializa o pool para N nós de NodePassagem
 /**
  * @brief Inicializa um pool de memória para armazenar nós de passagens.
  * 

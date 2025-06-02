@@ -16,12 +16,13 @@
 #define _GNU_SOURCE
 #include <time.h>
 
-/*
- * Representa um Dono (conforme o enunciado: numContribuinte, nome, codPostal).
+/**
+ * @brief  * Representa um Dono (conforme o enunciado: numContribuinte, nome, codPostal).
  * Aqui usamos:
  *  - numeroContribuinte (int)
  *  - nome (string)
  *  - codigoPostal (string)
+ * 
  */
 typedef struct {
     int  numeroContribuinte;
@@ -29,22 +30,25 @@ typedef struct {
     char codigoPostal[DONO_MAX_CODIGOPOSTAL];
 } Dono;
 
-/*
- * Cada node de lista ligada para armazenar Donos.
+/**
+ * @brief Cada node de lista ligada para armazenar Donos.
+ * 
  */
 typedef struct nodeDono {
     Dono               dono;
     struct nodeDono*   next;
 } NodeDono;
 
-/*
- * Representa um Carro (equivalente à entidade "Carro" do enunciado).
+/**
+ * @brief Representa um Carro (equivalente à entidade "Carro" do enunciado).
  *  - matrícula => matricula
  *  - marca => marca
  *  - modelo => modelo
  *  - ano => ano
  *  - numContribuinte do Dono => donoContribuinte
  *  - codVeiculo => idVeiculo
+ *
+ * 
  */
 typedef struct {
     char matricula[CARRO_MAX_MATRICULA];
@@ -55,16 +59,18 @@ typedef struct {
     int  idVeiculo;
 } Carro;
 
-/*
- * Lista ligada de Carros.
+/**
+ * @brief Lista ligada de Carros.
+ * 
  */
 typedef struct nodeCarro {
     Carro             carro;
     struct nodeCarro* next;
 } NodeCarro;
 
-/*
- * Representa um Sensor (equivalente a "codSensor", "designacao", "latitude", "longitude").
+/**
+ * @brief Representa um Sensor (equivalente a "codSensor", "designacao", "latitude", "longitude").
+ * 
  */
 typedef struct {
     int  idSensor;
@@ -73,19 +79,21 @@ typedef struct {
     char longitude[SENSOR_MAX_LONGITUDE];
 } Sensor;
 
-/*
- * Lista ligada de Sensores.
+/**
+ * @brief Lista ligada de Sensores.
+ * 
  */
 typedef struct nodeSensor {
     Sensor            sensor;
     struct nodeSensor* next;
 } NodeSensor;
 
-/*
- * Representa uma Distancia entre dois Sensores:
+/**
+ * @brief  Representa uma Distancia entre dois Sensores:
  *  - idSensor1
  *  - idSensor2
  *  - distancia (float)
+ * 
  */
 typedef struct {
     int   idSensor1;
@@ -93,20 +101,22 @@ typedef struct {
     float distancia;
 } Distancia;
 
-/*
- * Lista ligada de Distancias.
+/**
+ * @brief Lista ligada de Distancias.
+ * 
  */
 typedef struct nodeDistancia {
     Distancia             distancia;
     struct nodeDistancia* next;
 } NodeDistancia;
 
-/*
- * Representa uma Passagem (equivalente a "Passagem" do enunciado):
+/**
+ * @brief  Representa uma Passagem (equivalente a "Passagem" do enunciado):
  *  - idSensor
  *  - idVeiculo
  *  - dataHora (string)
  *  - tipoRegisto (0=entrada, 1=saída)
+ * 
  */
 typedef struct {
     int  idSensor;
@@ -116,8 +126,9 @@ typedef struct {
     time_t ts;
 } Passagem;
 
-/*
- * Lista ligada de Passagens.
+/**
+ * @brief Lista ligada de Passagens.
+ * 
  */
 typedef struct nodePassagem {
     Passagem            passagem;
@@ -129,14 +140,20 @@ typedef struct kmVeiculo {
     float km;
 } KmVeiculo;
 
-// Estrutura para armazenar o total de quilómetros por marca
+/**
+ * @brief Estrutura para armazenar o total de quilómetros por marca
+ * 
+ */
 typedef struct kmMarca {
     char marca[CARRO_MAX_MARCA];
     double km;
 } KmMarca;
 
 
-// Estrutura para armazenar infrações numa árvore binária
+/**
+ * @brief Estrutura para armazenar infrações numa árvore binária
+ * 
+ */
 typedef struct TreeNodeInfracao {
     char matricula[CARRO_MAX_MATRICULA];  // Matrícula do veículo infrator
     double velocidadeMedia;               // Velocidade média calculada para determinar a infração
@@ -144,7 +161,10 @@ typedef struct TreeNodeInfracao {
     struct TreeNodeInfracao *right;         // Ponteiro para subárvore direita
 } TreeNodeInfracao;
 
-// Estrutura para agrupar passagens por veículo numa tabela hash
+/**
+ * @brief Estrutura para agrupar passagens por veículo numa tabela hash
+ * 
+ */
 typedef struct PassagemGroup {
     int idVeiculo;                  // Identificador do veículo
     NodePassagem* passagens;        // Lista ligada de passagens deste veículo
@@ -152,7 +172,10 @@ typedef struct PassagemGroup {
 } PassagemGroup;
 
 
-// -- Estruturas para a funçao listarInfracoes
+/**
+ * @brief -- Estruturas para a funçao listarInfracoes
+ * 
+ */
 typedef struct hashTablePassagens {
     size_t numBuckets;              // Número de buckets na tabela hash
     PassagemGroup** buckets;        // Array com os buckets (cada bucket é uma lista de PassagemGroup)
@@ -182,7 +205,10 @@ typedef struct {
     int    numVeiculos;     // Nº de veículos do dono que circularam
 } DonoVelocidade;
 
-// Estrutura auxiliar local para guardar a contagem de cada marca
+/**
+ * @brief Estrutura auxiliar local para guardar a contagem de cada marca
+ * 
+ */
 typedef struct {
     char marca[CARRO_MAX_MARCA];
     int contagem;
