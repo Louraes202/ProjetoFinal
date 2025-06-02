@@ -144,21 +144,45 @@ void paginarListaGenerica(void* lista, int totalItems, size_t tamanhoItem,
 }
 
 // --- Donos ---
-
+/**
+ * @brief 
+ * 
+ * @param lista 
+ * @return int 
+ */
 int contarDonos(NodeDono* lista) {
     int count = 0;
     for (NodeDono* p = lista; p; p = p->next) count++;
     return count;
 }
 
+/**
+ * @brief 
+ * 
+ * @param no 
+ * @return void* 
+ */
 void* obterNextDono(void* no) { return ((NodeDono*)no)->next; }
 
+/**
+ * @brief 
+ * 
+ * @param item 
+ * @param indice 
+ */
 void imprimirItemDono(void* item, int indice) {
     NodeDono* p = (NodeDono*)item;
     printf("%4d) NIF=%-9d | Nome=\"%s\" | CP=%s\n",
            indice, p->dono.numeroContribuinte, p->dono.nome, p->dono.codigoPostal);
 }
 
+/**
+ * @brief 
+ * 
+ * @param lista 
+ * @param termo 
+ * @return int 
+ */
 int pesquisarDono(void* lista, const char* termo) {
     char buffer[20];
     int nifBusca;
@@ -181,7 +205,11 @@ int pesquisarDono(void* lista, const char* termo) {
     return 0;
 }
 
-
+/**
+ * @brief 
+ * 
+ * @param lista 
+ */
 void imprimirListaDonos(NodeDono* lista) {
     paginarListaGenerica(
         lista,
@@ -198,20 +226,45 @@ void imprimirListaDonos(NodeDono* lista) {
 
 // --- Funções auxiliares para a paginação de CARROS ---
 
+/**
+ * @brief 
+ * 
+ * @param lista 
+ * @return int 
+ */
 int contarCarros(NodeCarro* lista) {
     int count = 0;
     for (NodeCarro* p = lista; p; p = p->next) count++;
     return count;
 }
 
+/**
+ * @brief 
+ * 
+ * @param no 
+ * @return void* 
+ */
 void* obterNextCarro(void* no) { return ((NodeCarro*)no)->next; }
 
+/**
+ * @brief 
+ * 
+ * @param item 
+ * @param indice 
+ */
 void imprimirItemCarro(void* item, int indice) {
     NodeCarro* p = (NodeCarro*)item;
     printf("%4d) Mat=%-9s | Marca=%-15s | Modelo=%-15s | Ano=%d | DonoNIF=%d\n",
            indice, p->carro.matricula, p->carro.marca, p->carro.modelo, p->carro.ano, p->carro.donoContribuinte);
 }
 
+/**
+ * @brief 
+ * 
+ * @param lista 
+ * @param termo 
+ * @return int 
+ */
 int pesquisarCarro(void* lista, const char* termo) {
     char matriculaBusca[CARRO_MAX_MATRICULA];
     lerString("\nDigite a matricula a procurar: ", matriculaBusca, sizeof(matriculaBusca));
@@ -250,16 +303,34 @@ void imprimirListaCarros(NodeCarro* lista) {
 
 // --- Funções auxiliares para a paginação de SENSORES ---
 
+/**
+ * @brief 
+ * 
+ * @param lista 
+ * @return int 
+ */
 int contarSensores(NodeSensor* lista) {
     int count = 0;
     for (NodeSensor* p = lista; p; p = p->next) count++;
     return count;
 }
 
+/**
+ * @brief 
+ * 
+ * @param no 
+ * @return void* 
+ */
 void* obterNextSensor(void* no) { 
     return ((NodeSensor*)no)->next; 
 }
 
+/**
+ * @brief 
+ * 
+ * @param item 
+ * @param indice 
+ */
 void imprimirItemSensor(void* item, int indice) {
     NodeSensor* p = (NodeSensor*)item;
     printf("%4d) ID=%-3d | Designacao: %-25s | Lat: %-20s | Lon: %s\n",
@@ -270,6 +341,13 @@ void imprimirItemSensor(void* item, int indice) {
            p->sensor.longitude);
 }
 
+/**
+ * @brief 
+ * 
+ * @param lista 
+ * @param termo 
+ * @return int 
+ */
 int pesquisarSensor(void* lista, const char* termo) {
     char buffer[20];
     int idBusca;
@@ -316,16 +394,33 @@ void imprimirListaSensores(NodeSensor* lista) {
 
 // --- Funções auxiliares para a paginação de DISTANCIAS ---
 
+/**
+ * @brief 
+ * 
+ * @param lista 
+ * @return int 
+ */
 int contarDistancias(NodeDistancia* lista) {
     int count = 0;
     for (NodeDistancia* p = lista; p; p = p->next) count++;
     return count;
 }
-
+/**
+ * @brief 
+ * 
+ * @param no 
+ * @return void* 
+ */
 void* obterNextDistancia(void* no) { 
     return ((NodeDistancia*)no)->next; 
 }
 
+/**
+ * @brief 
+ * 
+ * @param item 
+ * @param indice 
+ */
 void imprimirItemDistancia(void* item, int indice) {
     NodeDistancia* p = (NodeDistancia*)item;
     printf("%4d) Sensor %d <-> Sensor %d : %.3f km\n",
@@ -335,6 +430,13 @@ void imprimirItemDistancia(void* item, int indice) {
            p->distancia.distancia);
 }
 
+/**
+ * @brief 
+ * 
+ * @param lista 
+ * @param termo 
+ * @return int 
+ */
 int pesquisarDistancia(void* lista, const char* termo) {
     char buffer1[20], buffer2[20];
     int idSensor1Busca, idSensor2Busca;
@@ -391,16 +493,33 @@ void imprimirListaDistancias(NodeDistancia* lista) {
 
 // --- Funções auxiliares para a paginação de PASSAGENS ---
 
+/**
+ * @brief 
+ * 
+ * @param lista 
+ * @return int 
+ */
 int contarPassagens(NodePassagem* lista) {
     int count = 0;
     for (NodePassagem* p = lista; p; p = p->next) count++;
     return count;
 }
-
+/**
+ * @brief 
+ * 
+ * @param no 
+ * @return void* 
+ */
 void* obterNextPassagem(void* no) { 
     return ((NodePassagem*)no)->next; 
 }
 
+/**
+ * @brief 
+ * 
+ * @param item 
+ * @param indice 
+ */
 void imprimirItemPassagem(void* item, int indice) {
     NodePassagem* p = (NodePassagem*)item;
     printf("%4d) SensorID=%-3d | VeiculoID=%-5d | DataHora=\"%s\" | Tipo=%s\n",
@@ -411,6 +530,13 @@ void imprimirItemPassagem(void* item, int indice) {
            p->passagem.tipoRegisto == 0 ? "Entrada" : "Saida  ");
 }
 
+/**
+ * @brief 
+ * 
+ * @param lista 
+ * @param termo 
+ * @return int 
+ */
 int pesquisarPassagem(void* lista, const char* termo) {
     char buffer[20];
     int idVeiculoBusca;
@@ -568,7 +694,11 @@ size_t calcularMemoriaTotal(NodeDono* listaDonos, NodeCarro* listaCarros, NodeSe
 }
 
 
-
+/**
+ * @brief 
+ * 
+ * @param lista 
+ */
 void libertarListaPassagens(NodePassagem** lista) {
     NodePassagem *atual = *lista, *seguinte;
     int cont = 0;
@@ -598,6 +728,13 @@ void ordenar_donos_NIF(Dono *dono, int total) {
     }
 }
 
+/**
+ * @brief 
+ * 
+ * @param carros 
+ * @param total 
+ * @param comparar 
+ */
 void ordenar_carros(Carro *carros, int total, int (*comparar)(const Carro *, const Carro *)) {
     for (int i = 0; i < total - 1; i++) {
         int min_index = i;
@@ -614,22 +751,59 @@ void ordenar_carros(Carro *carros, int total, int (*comparar)(const Carro *, con
     }
 }
 
+/**
+ * @brief 
+ * 
+ * @param a 
+ * @param b 
+ * @return int 
+ */
 int comparar_matricula(const Carro *a, const Carro *b) {
     return strcmp(a->matricula, b->matricula);
 }
 
+/**
+ * @brief 
+ * 
+ * @param a 
+ * @param b 
+ * @return int 
+ */
 int comparar_marca(const Carro *a, const Carro *b) {
     return strcmp(a->marca, b->marca);
 }
 
+/**
+ * @brief 
+ * 
+ * @param a 
+ * @param b 
+ * @return int 
+ */
 int comparar_modelo(const Carro *a, const Carro *b) {
     return strcmp(a->modelo, b->modelo);
 }
 
+/**
+ * @brief 
+ * 
+ * @param dataHora 
+ * @param inicio 
+ * @param fim 
+ * @return int 
+ */
 int verificacao_periodo(const char *dataHora, const char *inicio, const char *fim) {
     return strcmp(dataHora, inicio) >= 0 && strcmp(dataHora, fim) <= 0;
 }
 
+/**
+ * @brief 
+ * 
+ * @param lista 
+ * @param total 
+ * @param id 
+ * @return int 
+ */
 int veiculo_ja_adicionado(const int lista[], int total, int id) {
     for (int i = 0; i < total; i++) {
         if (lista[i] == id) {
@@ -639,6 +813,14 @@ int veiculo_ja_adicionado(const int lista[], int total, int id) {
     return 0;
 }
 
+/**
+ * @brief 
+ * 
+ * @param passagens 
+ * @param total_passagens 
+ * @param carros 
+ * @param total_carros 
+ */
 void mostrar_veiculos_periodo(Passagem passagens[], int total_passagens, Carro carros[], int total_carros) {
     char inicio[PASSAGEM_MAX_DATAHORA];
     char fim[PASSAGEM_MAX_DATAHORA];
@@ -746,6 +928,12 @@ void registarDono(NodeDono** listaDonos) {
     printf("\nDono '%s' registado com sucesso!\n", nome);
 }
 
+/**
+ * @brief 
+ * 
+ * @param listaCarros 
+ * @param listaDonos 
+ */
 void registarCarro(NodeCarro** listaCarros, NodeDono* listaDonos) {
     char buffer[50];
     Carro novoCarro;
@@ -1019,7 +1207,13 @@ bool validarCodigoPostal(const char *cp) {
     return true;
 }
 
-// Função de comparação para qsort (ordem decrescente)
+/**
+ * @brief Função de comparação para qsort (ordem decrescente)
+ * 
+ * @param a 
+ * @param b 
+ * @return int 
+ */
 int cmpVeiculoRanking(const void *a, const void *b) {
     double diff = ((KmVeiculo*)b)->km - ((KmVeiculo*)a)->km;
     return (diff > 0) - (diff < 0);
@@ -1061,7 +1255,12 @@ char* strptime(const char* s, const char* format, struct tm* tm) {
     return NULL;
 }
 
-// Função auxiliar para contar nós na árvore
+/**
+ * @brief Função auxiliar para contar nós na árvore
+ * 
+ * @param arv 
+ * @param count 
+ */
 static void contarInfracoes(TreeNodeInfracao* arv, int* count) {
     if (arv) {
         (*count)++;
@@ -1070,7 +1269,13 @@ static void contarInfracoes(TreeNodeInfracao* arv, int* count) {
     }
 }
 
-// Função auxiliar para armazenar nós da árvore em um vetor (in‑order)
+/**
+ * @brief Função auxiliar para armazenar nós da árvore em um vetor (in‑order)
+ * 
+ * @param arv 
+ * @param arr 
+ * @param idx 
+ */
 static void armazenarInfracoesAux(TreeNodeInfracao* arv, TreeNodeInfracao** arr, int* idx) {
     if (arv) {
         armazenarInfracoesAux(arv->left, arr, idx);
@@ -1118,8 +1323,12 @@ void libertarArvoreInfracoes(TreeNodeInfracao* arvInfra) {
 
 
 
-// Função de parsing da timesstamp
-// Função de parsing da timesstamp (CORRIGIDA)
+/**
+ * @brief Função de parsing da timesstamp
+ * 
+ * @param dataHora 
+ * @return time_t 
+ */
 time_t parseTimestamp(const char *dataHora) {
     struct tm tm = {0}; // Inicializar a struct a zeros
     char buffer[25]; // Espaço suficiente para a string
@@ -1147,7 +1356,14 @@ time_t parseTimestamp(const char *dataHora) {
     return mktime(&tm);
 }
 
-// Função para obter distâncias entre sensores
+/**
+ * @brief Função para obter distâncias entre sensores
+ * 
+ * @param lista 
+ * @param id1 
+ * @param id2 
+ * @return double 
+ */
 double obterDistancia(NodeDistancia* lista, int id1, int id2) {
     for (NodeDistancia* p = lista; p; p = p->next) {
         if ((p->distancia.idSensor1 == id1 && p->distancia.idSensor2 == id2) ||
@@ -1158,7 +1374,13 @@ double obterDistancia(NodeDistancia* lista, int id1, int id2) {
     return -1.0; // Distância não encontrada
 }
 
-// Função para calcular a velocidade média total de um veículo (VERSÃO CORRIGIDA)
+/**
+ * @brief Função para calcular a velocidade média total de um veículo 
+ * 
+ * @param passagens 
+ * @param listaDistancias 
+ * @return double 
+ */
 double calcularVelocidadeMediaPonderada(NodePassagem* passagens, NodeDistancia* listaDistancias) {
     // A lista de passagens para um veículo já deve vir ordenada por data
     if (!passagens) return -1.0;
@@ -1208,6 +1430,13 @@ double calcularVelocidadeMediaPonderada(NodePassagem* passagens, NodeDistancia* 
     return -1.0; // Nenhuma viagem válida encontrada
 }
 
+/**
+ * @brief 
+ * 
+ * @param passagens 
+ * @param listaDistancias 
+ * @return double 
+ */
 double calcularVelocidadeInfracao(NodePassagem* passagens,
                                   NodeDistancia* listaDistancias)
 {
@@ -1239,7 +1468,14 @@ double calcularVelocidadeInfracao(NodePassagem* passagens,
     return maxVel;
 }
 
-// Função auxiliar para filtrar passagens dentro do intervalo [inicio, fim]
+/**
+ * @brief Função auxiliar para filtrar passagens dentro do intervalo [inicio, fim]
+ * 
+ * @param lista 
+ * @param inicio 
+ * @param fim 
+ * @return NodePassagem* 
+ */
 NodePassagem* filtrarPassagens(NodePassagem* lista, time_t inicio, time_t fim) {
     NodePassagem* filtradas = NULL;
     NodePassagem* ultimo = NULL;
@@ -1268,12 +1504,23 @@ NodePassagem* filtrarPassagens(NodePassagem* lista, time_t inicio, time_t fim) {
     return filtradas;
 }
 
-// Função hash simples: módulo do idVeiculo com o número de buckets
+/**
+ * @brief Função hash simples: módulo do idVeiculo com o número de buckets
+ * 
+ * @param idVeiculo 
+ * @param numBuckets 
+ * @return size_t 
+ */
 static size_t hashFunction(int idVeiculo, size_t numBuckets) {
     return ((size_t)idVeiculo) % numBuckets;
 }
 
-// Cria a tabela hash com um número especificado de buckets
+/**
+ * @brief Cria a tabela hash com um número especificado de buckets
+ * 
+ * @param numBuckets 
+ * @return HashTablePassagens* 
+ */
 HashTablePassagens* criarHashTablePassagens(size_t numBuckets) {
     HashTablePassagens* ht = malloc(sizeof(HashTablePassagens));
     if (!ht) {
@@ -1290,7 +1537,12 @@ HashTablePassagens* criarHashTablePassagens(size_t numBuckets) {
     return ht;
 }
 
-// Insere uma passagem na tabela hash, agrupando-a pelo idVeiculo
+/**
+ * @brief Insere uma passagem na tabela hash, agrupando-a pelo idVeiculo
+ * 
+ * @param ht 
+ * @param passagem 
+ */
 void inserirPassagemHash(HashTablePassagens* ht, const Passagem* passagem) {
     if (!ht) return;
     size_t index = hashFunction(passagem->idVeiculo, ht->numBuckets);
@@ -1325,7 +1577,13 @@ void inserirPassagemHash(HashTablePassagens* ht, const Passagem* passagem) {
     grupo->passagens = novoNo;
 }
 
-// Busca a lista de passagens para um veículo específico
+/**
+ * @brief Busca a lista de passagens para um veículo específico
+ * 
+ * @param ht 
+ * @param idVeiculo 
+ * @return NodePassagem* 
+ */
 NodePassagem* pesquisarPassagensParaVeiculo(HashTablePassagens* ht, int idVeiculo) {
     if (!ht) return NULL;
     size_t index = hashFunction(idVeiculo, ht->numBuckets);
@@ -1351,7 +1609,11 @@ NodeSensor* pesquisarSensorPorId(NodeSensor* listaSensores, int idSensor) {
     return NULL;
 }
 
-// Libera toda a tabela hash e as passagens agrupadas
+/**
+ * @brief Libera toda a tabela hash e as passagens agrupadas
+ * 
+ * @param ht 
+ */
 void libertarHashTablePassagens(HashTablePassagens* ht) {
     if (!ht) return;
     for (size_t i = 0; i < ht->numBuckets; i++) {
@@ -1373,7 +1635,13 @@ void libertarHashTablePassagens(HashTablePassagens* ht) {
     free(ht);
 }
 
-// Função auxiliar para mesclar duas listas ordenadas de passagens por data/hora
+/**
+ * @brief Função auxiliar para mesclar duas listas ordenadas de passagens por data/hora
+ * 
+ * @param left 
+ * @param right 
+ * @return NodePassagem* 
+ */
 static NodePassagem* mergePassagens(NodePassagem* left, NodePassagem* right) {
     if (!left)  return right;
     if (!right) return left;
@@ -1391,7 +1659,12 @@ static NodePassagem* mergePassagens(NodePassagem* left, NodePassagem* right) {
 }
 
 
-// Função auxiliar para aplicar merge sort na lista de passagens
+/**
+ * @brief Função auxiliar para aplicar merge sort na lista de passagens
+ * 
+ * @param head 
+ * @return NodePassagem* 
+ */
 static NodePassagem* mergeSortPassagens(NodePassagem* head) {
     if (!head || !head->next)
         return head;
@@ -1420,7 +1693,13 @@ NodeCarro* pesquisarCarroPorId(NodeCarro* listaCarros, int idVeiculo) {
     return NULL;
 }
 
-// --- Função auxiliar para inserir uma infração na árvore ---
+/**
+ * @brief --- Função auxiliar para inserir uma infração na árvore ---
+ * 
+ * @param root 
+ * @param matricula 
+ * @param velocidadeMedia 
+ */
 void inserirInfracao(TreeNodeInfracao** root, const char* matricula, double velocidadeMedia) {
     if (*root == NULL) {
         *root = malloc(sizeof(TreeNodeInfracao));
@@ -1447,7 +1726,15 @@ void inserirInfracao(TreeNodeInfracao** root, const char* matricula, double velo
 
 
 
-// Função de listar infraçoes
+/**
+ * @brief Função de listar infraçoes
+ * 
+ * @param listaCarros 
+ * @param listaPassagens 
+ * @param listaDistancias 
+ * @param inicio 
+ * @param fim 
+ */
 void listarInfracoes(NodeCarro*     listaCarros,
                      NodePassagem*  listaPassagens,
                      NodeDistancia* listaDistancias,
@@ -1565,12 +1852,28 @@ void listarInfracoes(NodeCarro*     listaCarros,
     libertarListaPassagens(&passagensFiltradas);
 }
 
+/**
+ * @brief 
+ * 
+ * @param a 
+ * @param b 
+ * @return int 
+ */
 int cmpRanking(const void* a, const void* b) {
     RankingInfra* r1 = (RankingInfra*)a;
     RankingInfra* r2 = (RankingInfra*)b;
     return r2->infraCount - r1->infraCount;
 }
 
+/**
+ * @brief 
+ * 
+ * @param listaPassagens 
+ * @param listaDistancias 
+ * @param listaCarros 
+ * @param inicio 
+ * @param fim 
+ */
 void rankingInfraVeiculos(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, NodeCarro* listaCarros, time_t inicio, time_t fim) {
     // 1. Filtrar as passagens dentro do intervalo
 
@@ -1816,13 +2119,27 @@ void rankingVeiculos(NodePassagem* listaPassagens, NodeDistancia* listaDistancia
 }
 
 
-// Função de comparação para qsort (ordem decrescente por quilómetros)
+/**
+ * @brief Função de comparação para qsort (ordem decrescente por quilómetros)
+ * 
+ * @param a 
+ * @param b 
+ * @return int 
+ */
 int cmpMarcaRanking(const void *a, const void *b) {
     double diff = ((KmMarca*)b)->km - ((KmMarca*)a)->km;
     return (diff > 0) - (diff < 0);
 }
 
-// Função para calcular o ranking por marca
+/**
+ * @brief Função para calcular o ranking por marca
+ * 
+ * @param listaPassagens 
+ * @param listaDistancias 
+ * @param listaCarros 
+ * @param inicio 
+ * @param fim 
+ */
 void rankingPorMarca(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, NodeCarro* listaCarros, time_t inicio, time_t fim) {
     int maxMarcas = 100; // Ajustar conforme necessário
     KmMarca *ranking = calloc(maxMarcas, sizeof(KmMarca));
@@ -1886,6 +2203,15 @@ void rankingPorMarca(NodePassagem* listaPassagens, NodeDistancia* listaDistancia
     free(ranking);
 }
 
+/**
+ * @brief 
+ * 
+ * @param listaPassagens 
+ * @param listaDistancias 
+ * @param listaCarros 
+ * @param inicio 
+ * @param fim 
+ */
 void velocidadesMedias(NodePassagem* listaPassagens, NodeDistancia* listaDistancias, NodeCarro* listaCarros, time_t inicio, time_t fim) {
     // 1. Filtrar as passagens no intervalo
     NodePassagem* passagensFiltradas = filtrarPassagens(listaPassagens, inicio, fim);
@@ -2021,7 +2347,13 @@ void velocidadesMedias(NodePassagem* listaPassagens, NodeDistancia* listaDistanc
     libertarListaPassagens(&passagensFiltradas);
 }
 
-// Função de comparação para qsort (ordem decrescente de velocidade média)
+/**
+ * @brief Função de comparação para qsort (ordem decrescente de velocidade média)
+ * 
+ * @param a 
+ * @param b 
+ * @return int 
+ */
 static int cmpMarcaVelocidade(const void* a, const void* b) {
     MarcaVelocidade* marcaA = (MarcaVelocidade*)a;
     MarcaVelocidade* marcaB = (MarcaVelocidade*)b;
@@ -2123,7 +2455,13 @@ void rankingMarcasVelocidade(NodeCarro* listaCarros, NodePassagem* listaPassagen
     libertarListaPassagens(&passagensFiltradas);
 }
 
-// --- Função auxiliar para pesquisar um Dono por NIF ---
+/**
+ * @brief --- Função auxiliar para pesquisar um Dono por NIF ---
+ * 
+ * @param listaDonos 
+ * @param nif 
+ * @return NodeDono* 
+ */
 NodeDono* pesquisarDonoPorNIF(NodeDono* listaDonos, int nif) {
     for (NodeDono* p = listaDonos; p; p = p->next) {
         if (p->dono.numeroContribuinte == nif) {
@@ -2133,7 +2471,13 @@ NodeDono* pesquisarDonoPorNIF(NodeDono* listaDonos, int nif) {
     return NULL;
 }
 
-// --- Função de comparação para qsort (por velocidade média do dono) ---
+/**
+ * @brief --- Função de comparação para qsort (por velocidade média do dono) ---
+ * 
+ * @param a 
+ * @param b 
+ * @return int 
+ */
 static int cmpDonoVelocidade(const void* a, const void* b) {
     DonoVelocidade* donoA = (DonoVelocidade*)a;
     DonoVelocidade* donoB = (DonoVelocidade*)b;
@@ -2244,6 +2588,12 @@ void rankingDonosVelocidade(NodeDono* listaDonos, NodeCarro* listaCarros, NodePa
 
 // --- Funções Auxiliares para a Exportação CSV ---
 
+/**
+ * @brief 
+ * 
+ * @param head 
+ * @param filepath 
+ */
 static void exportarDonosCSV(NodeDono* head, const char* filepath) {
     FILE* fp = fopen(filepath, "w");
     if (!fp) {
@@ -2262,6 +2612,12 @@ static void exportarDonosCSV(NodeDono* head, const char* filepath) {
     printf("Ficheiro %s exportado com sucesso.\n", filepath);
 }
 
+/**
+ * @brief 
+ * 
+ * @param head 
+ * @param filepath 
+ */
 static void exportarCarrosCSV(NodeCarro* head, const char* filepath) {
     FILE* fp = fopen(filepath, "w");
     if (!fp) {
@@ -2283,6 +2639,12 @@ static void exportarCarrosCSV(NodeCarro* head, const char* filepath) {
     printf("Ficheiro %s exportado com sucesso.\n", filepath);
 }
 
+/**
+ * @brief 
+ * 
+ * @param head 
+ * @param filepath 
+ */
 static void exportarSensoresCSV(NodeSensor* head, const char* filepath) {
     FILE* fp = fopen(filepath, "w");
     if (!fp) {
@@ -2302,6 +2664,12 @@ static void exportarSensoresCSV(NodeSensor* head, const char* filepath) {
     printf("Ficheiro %s exportado com sucesso.\n", filepath);
 }
 
+/**
+ * @brief 
+ * 
+ * @param head 
+ * @param filepath 
+ */
 static void exportarDistanciasCSV(NodeDistancia* head, const char* filepath) {
     FILE* fp = fopen(filepath, "w");
     if (!fp) {
@@ -2320,6 +2688,12 @@ static void exportarDistanciasCSV(NodeDistancia* head, const char* filepath) {
     printf("Ficheiro %s exportado com sucesso.\n", filepath);
 }
 
+/**
+ * @brief 
+ * 
+ * @param head 
+ * @param filepath 
+ */
 static void exportarPassagensCSV(NodePassagem* head, const char* filepath) {
     FILE* fp = fopen(filepath, "w");
     if (!fp) {
@@ -2487,6 +2861,14 @@ void exportarDadosXML(NodeDono* listaDonos, NodeCarro* listaCarros, NodeSensor* 
     printf("Ficheiro XML exportado com sucesso em: %s\n", filepath);
 }
 
+/**
+ * @brief 
+ * 
+ * @param idVeiculoDebug 
+ * @param listaCarros 
+ * @param listaPassagens 
+ * @param listaDistancias 
+ */
 void debugVeiculo(int idVeiculoDebug, NodeCarro* listaCarros, NodePassagem* listaPassagens, NodeDistancia* listaDistancias) {
     printf("\n==============================================\n");
     printf("--- INICIANDO DEBUG PARA O VEICULO ID: %d ---\n", idVeiculoDebug);
@@ -2600,6 +2982,16 @@ void lerString(const char* prompt, char* buffer, int tamanho) {
     buffer[strcspn(buffer, "\n")] = 0;
 }
 
+/**
+ * @brief 
+ * 
+ * @param codPostal 
+ * @param listaDonos 
+ * @param listaCarros 
+ * @param listaPassagens 
+ * @param listaDistancias 
+ * @return double 
+ */
 double velocidadeMediaPorCodigoPostal(const char* codPostal, NodeDono* listaDonos, NodeCarro* listaCarros, NodePassagem* listaPassagens, NodeDistancia* listaDistancias) {
     double distanciaTotal = 0.0;
     double tempoTotalSegundos = 0.0;
@@ -2663,6 +3055,13 @@ double velocidadeMediaPorCodigoPostal(const char* codPostal, NodeDono* listaDono
     return (distanciaTotal / tempoTotalSegundos) * 3600.0; // km/h
 }
 
+/**
+ * @brief 
+ * 
+ * @param a 
+ * @param b 
+ * @return int 
+ */
 int compararCarrosPorMatricula(const void* a, const void* b) {
     // Os elementos do array são ponteiros para os nós (NodeCarro*),
     // então 'a' e 'b' são ponteiros para esses ponteiros (NodeCarro**).
@@ -2680,6 +3079,14 @@ int compararDonosPorNome(const void* a, const void* b) {
     return strcmp(donoA->dono.nome, donoB->dono.nome);
 }
 
+/**
+ * @brief 
+ * 
+ * @param listaPassagens 
+ * @param listaCarros 
+ * @param inicio 
+ * @param fim 
+ */
 void listarVeiculosPorPeriodo(NodePassagem* listaPassagens, NodeCarro* listaCarros, time_t inicio, time_t fim) {
     if (!listaPassagens || !listaCarros) {
         printf("Nao ha passagens ou carros carregados para processar.\n");
@@ -2811,6 +3218,11 @@ void listarVeiculosPorPeriodo(NodePassagem* listaPassagens, NodeCarro* listaCarr
     libertarListaCarros(&listaCarrosOrdenada); // Liberta a lista ordenada que criámos
 }
 
+/**
+ * @brief 
+ * 
+ * @param listaDonos 
+ */
 void imprimirListaDonosOrdemAlfabetica(NodeDono* listaDonos) {
     if (!listaDonos) {
         printf("\n--- Lista de Donos (Ordem Alfabética) ---\n");
@@ -2887,6 +3299,11 @@ void imprimirListaDonosOrdemAlfabetica(NodeDono* listaDonos) {
     libertarListaDonos(&listaDonosOrdenada);
 }
 
+/**
+ * @brief 
+ * 
+ * @param listaCarros 
+ */
 void determinarMarcaMaisComum(NodeCarro* listaCarros) {
     if (!listaCarros) {
         printf("\nNao ha carros carregados para determinar a marca mais comum.\n");
